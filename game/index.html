@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#07111f">
+    <title>Chat Ships It — Asteroid Run</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: system-ui, sans-serif;
+        background: #07111f;
+        color: #eff6ff;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      main { width: min(100%, 960px); }
+
+      .topline {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        gap: 16px;
+      }
+
+      h1 { margin: 0; font-size: clamp(1.2rem, 3vw, 1.8rem); }
+      .score { color: #7dd3fc; font-variant-numeric: tabular-nums; }
+
+      canvas {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        border: 1px solid #24384e;
+        border-radius: 12px;
+        background: #081827;
+        box-shadow: 0 18px 60px #0008;
+      }
+
+      p { color: #a9bbcf; line-height: 1.5; }
+      .help { margin: 12px 0 0; text-align: center; }
+      kbd { color: #eff6ff; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="topline">
+        <h1>🚀 Asteroid Run</h1>
+        <div class="score" aria-live="polite">Score: <span id="score">0</span></div>
+      </div>
+      <canvas id="game" width="960" height="540" aria-label="Dodge asteroids with your ship"></canvas>
+      <p class="help">Move with <kbd>← ↑ → ↓</kbd> or <kbd>W A S D</kbd>. After a crash, press <kbd>Space</kbd> to fly again.</p>
+    </main>
+    <script src="/game/game.js" defer></script>
+  </body>
+</html>

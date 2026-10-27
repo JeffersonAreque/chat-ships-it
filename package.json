@@ -1,0 +1,15 @@
+{
+  "name": "chat-ships-it",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A Twitch chat-driven mini-game for the Codex x TwitchCon Hackathon.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  }
+}
