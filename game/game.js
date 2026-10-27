@@ -19,6 +19,7 @@
   let spawnTimer;
   let lastFrame;
   let gameOver;
+  let shield;
 
   function startGame() {
     ship = { x: width / 2, y: height - 75, radius: 17, speed: 290 };
@@ -27,6 +28,7 @@
     spawnTimer = 0;
     lastFrame = 0;
     gameOver = false;
+    shield = true;
     scoreLabel.textContent = '0';
     requestAnimationFrame(frame);
   }
@@ -69,6 +71,16 @@
     context.lineTo(0, 28 + Math.random() * 8);
     context.lineTo(6, 17);
     context.fill();
+
+    if (shield) {
+      context.strokeStyle = '#67e8f9';
+      context.lineWidth = 2;
+      context.globalAlpha = 0.75;
+      context.beginPath();
+      context.arc(0, 0, 27, 0, Math.PI * 2);
+      context.stroke();
+      context.globalAlpha = 1;
+    }
     context.restore();
   }
 
@@ -147,9 +159,16 @@
       for (const asteroid of asteroids) {
         asteroid.y += asteroid.speed * delta;
         drawAsteroid(asteroid);
-        if (collides(asteroid)) gameOver = true;
+        if (collides(asteroid)) {
+          if (shield) {
+            shield = false;
+            asteroid.absorbed = true;
+          } else {
+            gameOver = true;
+          }
+        }
       }
-      asteroids = asteroids.filter((asteroid) => asteroid.y < height + asteroid.radius);
+      asteroids = asteroids.filter((asteroid) => !asteroid.absorbed && asteroid.y < height + asteroid.radius);
 
       score += delta * 10;
       scoreLabel.textContent = String(Math.floor(score));
