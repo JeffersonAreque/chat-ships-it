@@ -89,9 +89,11 @@
     context.save();
     context.translate(asteroid.x, asteroid.y);
     context.rotate(asteroid.rotation);
-    context.fillStyle = '#75869b';
-    context.strokeStyle = '#cbd5e1';
+    context.fillStyle = '#315b45';
+    context.strokeStyle = '#39ff14';
     context.lineWidth = 2;
+    context.shadowColor = '#39ff14';
+    context.shadowBlur = 16;
     context.beginPath();
     for (let point = 0; point < 10; point += 1) {
       const angle = (point / 10) * Math.PI * 2;
