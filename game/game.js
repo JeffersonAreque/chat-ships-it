@@ -46,18 +46,12 @@
       context.fillRect(star.x, star.y, star.size, star.size);
     }
     context.globalAlpha = 1;
-    // CHAT_SHIPS_IT_BOSS_CREDIT_START
-    context.font = '14px system-ui, sans-serif';
-    context.textAlign = 'left';
-    context.fillStyle = '#bae6fd';
-    context.fillText("Boss by @TestViewer", 16, 28);
-    // CHAT_SHIPS_IT_BOSS_CREDIT_END
   }
 
   function drawShip() {
     context.save();
     context.translate(ship.x, ship.y);
-    context.fillStyle = '#fb7185';
+    context.fillStyle = '#67e8f9';
     context.strokeStyle = '#e0fbff';
     context.lineWidth = 2;
     context.beginPath();
