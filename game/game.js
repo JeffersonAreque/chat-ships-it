@@ -52,6 +52,7 @@
     context.fillStyle = '#bae6fd';
     context.fillText("Boss by @luis", 16, 28);
     context.fillText("Green Ship by @RealBuildTester", 16, 48);
+    context.fillText("Pink Asteroids by @SecurityTester", 16, 68);
     // CHAT_SHIPS_IT_BOSS_CREDIT_END
   }
 
@@ -96,8 +97,8 @@
     context.save();
     context.translate(asteroid.x, asteroid.y);
     context.rotate(asteroid.rotation);
-    context.fillStyle = '#75869b';
-    context.strokeStyle = '#cbd5e1';
+    context.fillStyle = '#ec4899';
+    context.strokeStyle = '#fbcfe8';
     context.lineWidth = 2;
     context.beginPath();
     for (let point = 0; point < 10; point += 1) {
