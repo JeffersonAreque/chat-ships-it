@@ -8,6 +8,7 @@ const { WebSocket, WebSocketServer } = require('ws');
 const { createIdeaStore } = require('./ideas/ideaStore');
 const { createBuildQueue } = require('./ideas/buildQueue');
 const { createDevAdapter } = require('./chat/devAdapter');
+const { createCodexRunner } = require('./builder/codexRunner');
 
 const app = express();
 const server = createServer(app);
@@ -18,10 +19,13 @@ const chatDirectory = path.join(__dirname, 'chat');
 const overlayDirectory = path.join(__dirname, 'overlay');
 const adminDirectory = path.join(__dirname, 'admin');
 const chatMode = String(process.env.CHAT_MODE || 'dev').trim().toLowerCase();
+const codexMode = String(process.env.CODEX_MODE || 'mock').trim().toLowerCase();
 const bannedWords = String(process.env.BANNED_WORDS || '').split(',').map((word) => word.trim()).filter(Boolean);
 const ideaStore = createIdeaStore({ additionalBannedWords: bannedWords });
 const buildQueue = createBuildQueue();
 const adminPassword = String(process.env.ADMIN_PASSWORD || '');
+let latestBuildNotice = null;
+let buildRunner;
 
 if (!['dev', 'twitch'].includes(chatMode)) {
   throw new Error('CHAT_MODE must be either "dev" or "twitch".');
@@ -45,9 +49,31 @@ function broadcastState() {
   for (const socket of websocketServer.clients) sendJson(socket, message);
 }
 
-function getAppState() {
-  return { ...ideaStore.getSnapshot(), buildQueue: buildQueue.getItems() };
+function broadcastGameReload() {
+  const message = { type: 'game-reload', version: Date.now() };
+  for (const socket of websocketServer.clients) sendJson(socket, message);
 }
+
+function getAppState() {
+  return {
+    ...ideaStore.getSnapshot(),
+    buildQueue: buildQueue.getItems(),
+    buildNotice: latestBuildNotice,
+    canUndo: buildRunner?.canUndo() || false,
+  };
+}
+
+buildRunner = createCodexRunner({
+  buildQueue,
+  mode: codexMode,
+  projectRoot: __dirname,
+  onStatus(event) {
+    latestBuildNotice = event;
+    broadcastState();
+    if (event.status === 'done' || event.status === 'undone') broadcastGameReload();
+  },
+  onIdle: broadcastState,
+});
 
 function requireAdmin(request, response, next) {
   if (!adminPassword) {
@@ -102,7 +128,11 @@ app.get('/game', (request, response) => {
   response.sendFile(path.join(gameDirectory, 'index.html'));
 });
 
-app.use('/game', express.static(gameDirectory));
+app.use('/game', express.static(gameDirectory, {
+  setHeaders(response, filePath) {
+    if (path.basename(filePath) === 'game.js') response.setHeader('Cache-Control', 'no-store');
+  },
+}));
 app.get('/overlay', (request, response) => {
   response.sendFile(path.join(overlayDirectory, 'index.html'));
 });
@@ -131,6 +161,7 @@ app.post('/admin/api/approve', (request, response) => {
 
   const item = buildQueue.enqueue(result.idea, result.round);
   broadcastState();
+  buildRunner.processQueue().catch((error) => console.error('[builder] Queue failed:', error.message));
   response.json({ item, state: getAppState() });
 });
 app.post('/admin/api/reject', (request, response) => {
@@ -144,9 +175,17 @@ app.post('/admin/api/reject', (request, response) => {
   response.json({ idea: result.idea, state: getAppState() });
 });
 app.post('/admin/api/next-round', (request, response) => {
-  const state = ideaStore.nextRound();
+  ideaStore.nextRound();
   broadcastState();
-  response.json({ state: { ...state, buildQueue: buildQueue.getItems() } });
+  response.json({ state: getAppState() });
+});
+app.post('/admin/api/undo', async (request, response) => {
+  const result = await buildRunner.undoLastChange();
+  if (!result.accepted) {
+    response.status(400).json({ error: result.reason, state: getAppState() });
+    return;
+  }
+  response.json({ state: getAppState() });
 });
 app.use('/admin', express.static(adminDirectory));
 

@@ -194,6 +194,7 @@ function createCodexRunner({
   mode = process.env.CODEX_MODE || 'mock',
   projectRoot = path.resolve(__dirname, '..'),
   onStatus = () => {},
+  onIdle = () => {},
   timeoutMs = BUILD_TIMEOUT_MS,
 } = {}) {
   if (!buildQueue) throw new Error('A build queue is required.');
@@ -302,7 +303,12 @@ function createCodexRunner({
 
   function processQueue() {
     if (activeRun) return activeRun;
-    activeRun = drainQueue().finally(() => { activeRun = null; });
+    activeRun = drainQueue().finally(() => {
+      activeRun = null;
+      try { onIdle(); } catch (error) {
+        console.error('[builder] Could not broadcast idle state:', error.message);
+      }
+    });
     return activeRun;
   }
 
