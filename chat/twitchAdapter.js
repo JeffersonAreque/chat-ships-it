@@ -26,6 +26,8 @@ function createTwitchAdapter({ channel, token = '', username = '', onStatus = ()
   let onMessage = null;
   let socket = null;
   let reconnectTimer = null;
+  let messageStatsTimer = null;
+  let receivedMessageCount = 0;
   let stopped = true;
   let reconnectDelay = 1000;
 
@@ -92,6 +94,7 @@ function createTwitchAdapter({ channel, token = '', username = '', onStatus = ()
         if (!message || !onMessage || message[4].toLowerCase() !== cleanChannel) continue;
 
         const tags = parseTags(message[1]);
+        receivedMessageCount += 1;
         onMessage({ user: tags['display-name'] || message[2], text: message[5] });
       }
     });
@@ -114,6 +117,11 @@ function createTwitchAdapter({ channel, token = '', username = '', onStatus = ()
       if (stopped) {
         stopped = false;
         onMessage = messageHandler;
+        messageStatsTimer = setInterval(() => {
+          status(`received ${receivedMessageCount} messages in the last 30s`);
+          receivedMessageCount = 0;
+        }, 30000);
+        messageStatsTimer.unref?.();
         connect();
       }
     },
@@ -122,7 +130,9 @@ function createTwitchAdapter({ channel, token = '', username = '', onStatus = ()
       stopped = true;
       onMessage = null;
       clearTimeout(reconnectTimer);
+      clearInterval(messageStatsTimer);
       reconnectTimer = null;
+      messageStatsTimer = null;
       if (socket) {
         const currentSocket = socket;
         socket = null;
