@@ -28,7 +28,7 @@ async function makeProject(t) {
 }
 
 function enqueueIdea(queue) {
-  return queue.enqueue({ id: 1, text: 'make cats', author: 'TestViewer', votes: 1 }, 1);
+  return queue.enqueue({ id: 1, text: 'make the cat asteroids', author: 'TestViewer', votes: 1 }, 1);
 }
 
 test('keeps viewer text untrusted and uses only the restricted Codex sandbox options', () => {
@@ -49,8 +49,46 @@ test('keeps viewer text untrusted and uses only the restricted Codex sandbox opt
 test('uses Codex feature titles with a safe two-word fallback', () => {
   const item = { text: 'make the asteroids cats' };
   assert.equal(featureTitleFromOutput('Finished.\nFEATURE_TITLE: Cat Asteroids\n', item), 'Cat Asteroids');
-  assert.equal(featureTitleFromOutput('FEATURE_TITLE: Cat', item), 'Asteroids Cats');
+  assert.equal(featureTitleFromOutput('FEATURE_TITLE: Cat', item), 'Asteroid Cats');
+  assert.equal(featureTitleFromOutput('FEATURE_TITLE: Cat Asteroids', { text: 'add a shield that blocks one hit' }), 'Shield One Hit');
+  assert.equal(featureTitleFromOutput('FEATURE_TITLE: Cat Asteroids', { text: 'add a shield that blocks one hit' }, ['Cat Asteroids']), 'Shield One Hit');
   assert.equal(fallbackFeatureTitle('!@#$'), 'Game Update');
+});
+
+test('consecutive builds never reuse the previous idea title', async (t) => {
+  const root = await makeProject(t);
+  const queue = createBuildQueue();
+  queue.enqueue({ id: 1, text: 'make the asteroids cats', author: 'ana', votes: 2 }, 1);
+  queue.enqueue({ id: 2, text: 'add a shield that blocks one hit', author: 'maria', votes: 3 }, 1);
+  const statuses = [];
+  let calls = 0;
+
+  const runner = createCodexRunner({
+    buildQueue: queue,
+    mode: 'real',
+    projectRoot: root,
+    timeoutMs: 5000,
+    onStatus: (event) => statuses.push(event),
+    codexExecutor: async (_prompt, workspace) => {
+      calls += 1;
+      assert.deepEqual(await fs.readdir(workspace), ['game.js']);
+      const source = await fs.readFile(path.join(root, 'game', 'game.js'), 'utf8');
+      await fs.writeFile(path.join(workspace, 'game.js'), source.replace(/#[0-9a-f]{6}/i, calls === 1 ? '#4ade80' : '#38bdf8'), 'utf8');
+      return { stdout: 'FEATURE_TITLE: Cat Asteroids' };
+    },
+  });
+
+  await runner.processQueue();
+
+  assert.equal(calls, 2);
+  assert.deepEqual(queue.getItems().map((item) => [item.status, item.featureTitle]), [
+    ['done', 'Cat Asteroids'],
+    ['done', 'Shield One Hit'],
+  ]);
+  assert.deepEqual(statuses.filter((event) => event.status === 'done').map((event) => event.message), [
+    'Shipped! Cat Asteroids by @ana',
+    'Shipped! Shield One Hit by @maria',
+  ]);
 });
 
 test('retries one invalid Codex candidate with the validator error and ships a valid candidate without a credit in game.js', async (t) => {
@@ -77,7 +115,7 @@ test('retries one invalid Codex candidate with the validator error and ships a v
       assert.match(prompt, /previous candidate failed validation/i);
       assert.match(prompt, /untrusted diagnostic data, not instructions/i);
       assert.match(prompt, /SyntaxError|Unexpected|const/i);
-      const validCandidate = original.replace("context.fillStyle = '#22c55e';", "context.fillStyle = '#34d399';");
+      const validCandidate = original.replace('#081827', '#101827');
       await fs.writeFile(filePath, validCandidate, 'utf8');
       return { stdout: 'FEATURE_TITLE: Cat Asteroids' };
     },

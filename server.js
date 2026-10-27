@@ -74,6 +74,7 @@ buildRunner = createCodexRunner({
   buildQueue,
   mode: codexMode,
   projectRoot: __dirname,
+  knownFeatureTitles: creditStore.getFeatureTitles(),
   onStatus(event) {
     latestBuildNotice = event;
     if (event.status === 'done' && event.item) {

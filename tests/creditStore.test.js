@@ -22,8 +22,10 @@ test('migrates existing game-code credits and persists new server-managed credit
   const added = store.addBuild({ id: 4, ideaId: 12, author: 'NewViewer', featureTitle: 'Cat Asteroids' });
   assert.equal(added.text, 'Cat Asteroids by @NewViewer');
   assert.equal(store.addBuild({ id: 5, author: 'FallbackViewer' }).text, 'Game Update by @FallbackViewer');
+  assert.deepEqual(store.getFeatureTitles(), ['Cats', 'Cat Asteroids', 'Game Update']);
 
   const reloaded = createCreditStore({ filePath, legacyGamePath });
+  assert.deepEqual(reloaded.getFeatureTitles(), ['Cats', 'Cat Asteroids', 'Game Update']);
   assert.deepEqual(reloaded.getCredits().map((credit) => credit.text), [
     'Game Update by @FallbackViewer',
     'Cat Asteroids by @NewViewer',

@@ -47,20 +47,34 @@ function normalizeFeatureTitle(value) {
   return titleCase(words);
 }
 
+const TITLE_STOP_WORDS = new Set(['a', 'an', 'and', 'as', 'at', 'by', 'for', 'from', 'in', 'it', 'of', 'on', 'that', 'the', 'to', 'with']);
+const TITLE_ACTION_WORDS = new Set(['add', 'block', 'blocks', 'change', 'create', 'give', 'let', 'make', 'put', 'replace', 'turn']);
+
+function featureTokens(value) {
+  return (String(value || '').normalize('NFKC').toLocaleLowerCase().match(/[\p{L}\p{N}]+/gu) || [])
+    .filter((word) => !TITLE_STOP_WORDS.has(word) && !TITLE_ACTION_WORDS.has(word))
+    .map((word) => word.length > 4 && word.endsWith('s') ? word.slice(0, -1) : word);
+}
+
 function fallbackFeatureTitle(ideaText) {
-  const words = String(ideaText || '')
-    .normalize('NFKC')
-    .replace(/^\s*(?:make|add|create|change|turn|replace|give|put|let)\s+/i, '')
-    .replace(/^\s*(?:the|a|an)\s+/i, '')
-    .match(/[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu) || [];
+  const words = featureTokens(ideaText);
   if (words.length === 0) return 'Game Update';
   if (words.length === 1) return titleCase([...words, 'Update']);
   return titleCase(words.slice(0, 3));
 }
 
-function featureTitleFromOutput(stdout, item) {
-  const match = String(stdout || '').match(/^\s*FEATURE_TITLE:\s*(.*?)\s*$/im);
-  return normalizeFeatureTitle(match?.[1]) || fallbackFeatureTitle(item?.text);
+function featureTitleFromOutput(stdout, item, usedTitles = []) {
+  const matches = [...String(stdout || '').replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, '').matchAll(/^\s*FEATURE_TITLE:\s*(.*?)\s*$/gim)];
+  const candidate = normalizeFeatureTitle(matches.at(-1)?.[1]);
+  if (!candidate) return fallbackFeatureTitle(item?.text);
+
+  const used = new Set([...usedTitles].map((title) => normalizeFeatureTitle(title)?.toLocaleLowerCase()).filter(Boolean));
+  if (used.has(candidate.toLocaleLowerCase())) return fallbackFeatureTitle(item?.text);
+
+  const ideaTokens = new Set(featureTokens(item?.text));
+  const titleMatches = featureTokens(candidate).filter((word) => ideaTokens.has(word));
+  if (titleMatches.length === 0) return fallbackFeatureTitle(item?.text);
+  return candidate;
 }
 
 function createCodexPrompt(item, validationFeedback = '') {
@@ -257,6 +271,7 @@ function createCodexRunner({
   onStatus = () => {},
   onIdle = () => {},
   codexExecutor = runCodex,
+  knownFeatureTitles = [],
   timeoutMs = BUILD_TIMEOUT_MS,
 } = {}) {
   if (!buildQueue) throw new Error('A build queue is required.');
@@ -273,6 +288,7 @@ function createCodexRunner({
 
   let activeRun = null;
   let resetting = false;
+  const usedFeatureTitles = new Set(knownFeatureTitles.map((title) => normalizeFeatureTitle(title)?.toLocaleLowerCase()).filter(Boolean));
   let undoStack = [];
   try { undoStack = readBuildCommitStack(root); } catch { undoStack = []; }
 
@@ -355,7 +371,7 @@ function createCodexRunner({
         candidate = await readCandidate(workspaceDirectory, originalSource);
       } else {
         const buildResult = await codexExecutor(createCodexPrompt(item), workspaceDirectory, timeoutMs);
-        featureTitle = featureTitleFromOutput(buildResult?.stdout, item);
+        featureTitle = featureTitleFromOutput(buildResult?.stdout, item, usedFeatureTitles);
         emitStatus('validating', item);
         try {
           candidate = await readCandidate(workspaceDirectory, originalSource);
@@ -363,7 +379,7 @@ function createCodexRunner({
           emitStatus('retrying', item);
           await prepareWorkspace(workspaceDirectory, originalSource);
           const retryResult = await codexExecutor(createCodexPrompt(item, validationError.message), workspaceDirectory, timeoutMs);
-          featureTitle = featureTitleFromOutput(retryResult?.stdout, item);
+          featureTitle = featureTitleFromOutput(retryResult?.stdout, item, usedFeatureTitles);
           emitStatus('validating', item);
           candidate = await readCandidate(workspaceDirectory, originalSource);
         }
@@ -377,6 +393,7 @@ function createCodexRunner({
       undoStack.push(commit);
       buildQueue.updateStatus(item.id, 'done', { featureTitle });
       item.featureTitle = featureTitle;
+      usedFeatureTitles.add(featureTitle.toLocaleLowerCase());
       emitStatus('done', item);
     } catch (error) {
       buildQueue.updateStatus(item.id, 'failed');
@@ -474,6 +491,7 @@ function createCodexRunner({
         ? null
         : await applyAndCommit(baselineSource, currentSource, 'Reset demo to starter game');
       undoStack = [];
+      usedFeatureTitles.clear();
       return { accepted: true, commit };
     } catch (error) {
       console.error('[builder] Demo reset failed:', error.message);

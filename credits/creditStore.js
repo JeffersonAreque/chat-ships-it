@@ -67,6 +67,10 @@ function createCreditStore({ filePath, legacyGamePath } = {}) {
     return credits.slice(-10).reverse().map((credit) => ({ ...credit }));
   }
 
+  function getFeatureTitles() {
+    return credits.map((credit) => credit.featureTitle || String(credit.text || '').replace(/\s+by\s+@.*$/i, '')).filter(Boolean);
+  }
+
   function addBuild(item) {
     const author = sanitizeAuthor(item?.author);
     const credit = {
@@ -88,7 +92,7 @@ function createCreditStore({ filePath, legacyGamePath } = {}) {
     credits = [];
   }
 
-  return { getCredits, addBuild, clear };
+  return { getCredits, getFeatureTitles, addBuild, clear };
 }
 
 module.exports = { createCreditStore, extractLegacyCredits, sanitizeFeatureTitle, MAX_CREDITS };
