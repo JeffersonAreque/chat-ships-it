@@ -24,6 +24,17 @@ function createBuildQueue() {
     return items.map((item) => ({ ...item }));
   }
 
+  function claimNext() {
+    const item = items.find((candidate) => candidate.status === 'waiting');
+    if (!item) return null;
+    item.status = 'building';
+    return { ...item };
+  }
+
+  function hasWaiting() {
+    return items.some((item) => item.status === 'waiting');
+  }
+
   function updateStatus(id, status) {
     if (!BUILD_STATUSES.includes(status)) return { accepted: false, reason: 'Unknown build status.' };
     const item = items.find((candidate) => candidate.id === Number(id));
@@ -32,7 +43,7 @@ function createBuildQueue() {
     return { accepted: true, item: { ...item } };
   }
 
-  return { enqueue, getItems, updateStatus };
+  return { enqueue, getItems, claimNext, hasWaiting, updateStatus };
 }
 
 module.exports = { createBuildQueue, BUILD_STATUSES };
