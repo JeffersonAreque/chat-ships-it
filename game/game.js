@@ -123,7 +123,7 @@
     context.fillText('Ship down!', width / 2, height / 2 - 14);
     context.fillStyle = '#bae6fd';
     context.font = '22px system-ui, sans-serif';
-    context.fillText(`Score: ${score}  ·  Press Space to restart`, width / 2, height / 2 + 30);
+    context.fillText(`Score: ${Math.floor(score)}  ·  Press Space to restart`, width / 2, height / 2 + 30);
   }
 
   function frame(timestamp) {
