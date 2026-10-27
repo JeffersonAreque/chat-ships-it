@@ -9,6 +9,7 @@
   const nextRoundButton = document.querySelector('#next-round');
   const undoButton = document.querySelector('#undo-change');
   const buildStatus = document.querySelector('#build-status');
+  const buildError = document.querySelector('#build-error');
   let socket;
 
   function addIdea(idea) {
@@ -65,6 +66,8 @@
     roundNumber.textContent = String(state.round || 1);
     buildStatus.textContent = state.buildNotice?.message || 'No build running.';
     buildStatus.dataset.status = state.buildNotice?.status || 'idle';
+    buildError.textContent = state.buildNotice?.errorDetails || '';
+    buildError.hidden = !state.buildNotice?.errorDetails;
     undoButton.disabled = !state.canUndo;
     ideasList.replaceChildren();
     queueList.replaceChildren();
@@ -136,7 +139,12 @@
     socket.addEventListener('message', (event) => {
       let message;
       try { message = JSON.parse(event.data); } catch { return; }
-      if (message.type === 'state') render(message.state);
+      if (message.type === 'state') {
+        render(message.state);
+        if (message.state?.buildNotice?.status === 'failed') {
+          loadState().catch((error) => { actionStatus.textContent = error.message; });
+        }
+      }
     });
     socket.addEventListener('close', () => {
       connection.textContent = 'Live updates disconnected. Reconnecting…';

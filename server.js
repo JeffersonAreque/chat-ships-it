@@ -54,11 +54,13 @@ function broadcastGameReload() {
   for (const socket of websocketServer.clients) sendJson(socket, message);
 }
 
-function getAppState() {
+function getAppState({ includeBuildErrorDetails = false } = {}) {
+  const buildNotice = latestBuildNotice ? { ...latestBuildNotice } : null;
+  if (buildNotice && !includeBuildErrorDetails) delete buildNotice.errorDetails;
   return {
     ...ideaStore.getSnapshot(),
     buildQueue: buildQueue.getItems(),
-    buildNotice: latestBuildNotice,
+    buildNotice,
     canUndo: buildRunner?.canUndo() || false,
   };
 }
@@ -150,7 +152,7 @@ app.get('/admin', (request, response) => {
 });
 app.get('/admin/api/state', (request, response) => {
   response.set('Cache-Control', 'no-store');
-  response.json({ state: getAppState() });
+  response.json({ state: getAppState({ includeBuildErrorDetails: true }) });
 });
 app.post('/admin/api/approve', (request, response) => {
   const result = ideaStore.approveIdea(request.body?.ideaId);

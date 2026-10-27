@@ -1,5 +1,6 @@
 const { spawn } = require('node:child_process');
 const fs = require('node:fs/promises');
+const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { validateGameSource } = require('./gameValidator');
@@ -7,7 +8,25 @@ const { createMockCandidate } = require('./mockBuilder');
 
 const BUILD_TIMEOUT_MS = 3 * 60 * 1000;
 const MAX_GAME_BYTES = 128 * 1024;
-const WINDOWS_CODEX_COMMAND = 'codex exec --sandbox workspace-write --ask-for-approval never --config sandbox_workspace_write.network_access=false --config mcp_servers={} -';
+const CODEX_EXEC_ARGS = [
+  'exec', '--sandbox', 'workspace-write',
+  '--config', "approval_policy='never'",
+  '--config', 'sandbox_workspace_write.network_access=false',
+  '--config', 'mcp_servers={}', '-',
+];
+
+function findCodexExecutable(source = process.env) {
+  if (source.CODEX_CLI) return source.CODEX_CLI;
+  return 'codex';
+}
+
+function windowsCodexCommand(executable) {
+  const invocation = path.extname(executable).toLowerCase() === '.cmd'
+    || path.extname(executable).toLowerCase() === '.bat'
+    ? `"${executable}"`
+    : executable;
+  return `${invocation} exec --sandbox workspace-write --config approval_policy='never' --config sandbox_workspace_write.network_access=false --config mcp_servers={} -`;
+}
 
 function sanitizeAuthor(author) {
   return String(author || 'viewer').replace(/[\r\n\u0000-\u001f]/g, '').trim().slice(0, 30) || 'viewer';
@@ -30,10 +49,16 @@ function createCodexPrompt(item) {
 function codexEnvironment(source = process.env) {
   const allowed = [
     'PATH', 'Path', 'PATHEXT', 'COMSPEC', 'ComSpec', 'SystemRoot', 'SYSTEMROOT', 'WINDIR',
-    'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'TEMP', 'TMP', 'HOME', 'CODEX_HOME',
+    'USERPROFILE', 'HOMEDRIVE', 'HOMEPATH', 'APPDATA', 'LOCALAPPDATA', 'TEMP', 'TMP', 'HOME', 'CODEX_HOME',
     'CODEX_CONFIG_DIR', 'XDG_CONFIG_HOME', 'LANG', 'LC_ALL', 'TERM', 'NO_COLOR',
   ];
-  return Object.fromEntries(allowed.filter((key) => source[key] !== undefined).map((key) => [key, source[key]]));
+  const environment = Object.fromEntries(allowed.filter((key) => source[key] !== undefined).map((key) => [key, source[key]]));
+  if (process.platform === 'win32') {
+    const homeDirectory = source.USERPROFILE || source.HOME || os.homedir();
+    environment.HOME ||= homeDirectory;
+    environment.CODEX_HOME ||= path.join(homeDirectory, '.codex');
+  }
+  return environment;
 }
 
 function stopProcessTree(child) {
@@ -47,14 +72,12 @@ function stopProcessTree(child) {
 
 function runCodex(prompt, workspaceDirectory, timeoutMs = BUILD_TIMEOUT_MS) {
   const isWindows = process.platform === 'win32';
-  const executable = isWindows ? (process.env.ComSpec || 'cmd.exe') : 'codex';
-  const args = isWindows
-    ? ['/d', '/s', '/c', WINDOWS_CODEX_COMMAND]
-    : [
-      'exec', '--sandbox', 'workspace-write', '--ask-for-approval', 'never',
-      '--config', 'sandbox_workspace_write.network_access=false',
-      '--config', 'mcp_servers={}', '-',
-    ];
+  const codexExecutable = findCodexExecutable();
+  const invokeThroughCmd = isWindows && path.extname(codexExecutable).toLowerCase() !== '.exe';
+  const executable = invokeThroughCmd ? (process.env.ComSpec || 'cmd.exe') : codexExecutable;
+  const args = invokeThroughCmd
+    ? ['/d', '/s', '/c', windowsCodexCommand(codexExecutable)]
+    : CODEX_EXEC_ARGS;
 
   return new Promise((resolve, reject) => {
     const child = spawn(executable, args, {
@@ -74,7 +97,7 @@ function runCodex(prompt, workspaceDirectory, timeoutMs = BUILD_TIMEOUT_MS) {
     child.stdout.setEncoding('utf8');
     child.stderr.setEncoding('utf8');
     child.stdout.on('data', (chunk) => { stdout = `${stdout}${chunk}`.slice(-20000); });
-    child.stderr.on('data', (chunk) => { stderr = `${stderr}${chunk}`.slice(-20000); });
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
     child.on('error', (error) => {
       clearTimeout(timeout);
       reject(new Error(`Could not start Codex CLI: ${error.message}`));
@@ -84,8 +107,11 @@ function runCodex(prompt, workspaceDirectory, timeoutMs = BUILD_TIMEOUT_MS) {
       if (timedOut) {
         reject(new Error('Codex CLI exceeded the 3-minute time limit.'));
       } else if (code !== 0) {
-        const detail = stderr.trim().slice(-1000);
-        reject(new Error(`Codex CLI exited with ${code ?? signal}.${detail ? ` ${detail}` : ''}`));
+        const detail = stderr.trim();
+        const error = new Error(`Codex CLI exited with ${code ?? signal}.${detail ? ` ${detail}` : ''}`);
+        error.stderr = stderr;
+        error.exitCode = code;
+        reject(error);
       } else {
         resolve({ stdout, stderr });
       }
@@ -213,7 +239,7 @@ function createCodexRunner({
   let undoStack = [];
   try { undoStack = readBuildCommitStack(root); } catch { undoStack = []; }
 
-  function emitStatus(status, item = null, message) {
+  function emitStatus(status, item = null, message, errorDetails = null) {
     const messages = {
       building: 'Codex is building...',
       done: 'Shipped!',
@@ -224,6 +250,7 @@ function createCodexRunner({
       onStatus({
         status,
         message: message || messages[status] || status,
+        errorDetails: status === 'failed' ? errorDetails : null,
         item: item ? { id: item.id, ideaId: item.ideaId, author: item.author, text: item.text } : null,
       });
     } catch (error) {
@@ -285,7 +312,10 @@ function createCodexRunner({
     } catch (error) {
       buildQueue.updateStatus(item.id, 'failed');
       console.error(`[builder] Build ${item.id} failed:`, error.message);
-      emitStatus('failed', item);
+      const errorDetails = error.stderr
+        ? `Codex CLI exited with ${error.exitCode ?? 'an error'}\nstderr:\n${error.stderr}`
+        : error.message;
+      emitStatus('failed', item, undefined, errorDetails);
     } finally {
       try { await fs.rm(workspaceDirectory, { recursive: true, force: true }); } catch (error) {
         console.error('[builder] Could not clear the temporary workspace:', error.message);
@@ -357,6 +387,8 @@ module.exports = {
   createCodexPrompt,
   codexEnvironment,
   runCodex,
+  findCodexExecutable,
+  windowsCodexCommand,
   runGit,
   assertNoStagedOrGameChanges,
   makeCommitMessage,
