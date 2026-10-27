@@ -79,6 +79,10 @@
     queue.forEach(addQueueItem);
   }
 
+  function requireAdminAuthentication(response) {
+    if (response.status === 401) throw new Error('Wrong password, reload and try again');
+  }
+
   async function postAction(path, body = {}) {
     actionStatus.textContent = 'Saving…';
     const response = await fetch(`/admin/api/${path}`, {
@@ -86,6 +90,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
+    requireAdminAuthentication(response);
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'The action could not be completed.');
     render(result.state);
@@ -94,6 +99,7 @@
 
   async function loadState() {
     const response = await fetch('/admin/api/state', { cache: 'no-store' });
+    requireAdminAuthentication(response);
     if (!response.ok) throw new Error('Could not load admin state. Refresh and sign in again.');
     const result = await response.json();
     render(result.state);

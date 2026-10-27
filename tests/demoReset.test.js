@@ -34,3 +34,9 @@ test('admin reset button asks for confirmation and calls the protected reset rou
   assert.match(server, /app\.post\('\/admin\/api\/reset-demo'/);
 });
 
+test('admin UI gives a clear reload instruction after a 401 response', () => {
+  const script = fs.readFileSync(path.join(projectRoot, 'admin', 'admin.js'), 'utf8');
+  assert.match(script, /Wrong password, reload and try again/);
+  assert.match(script, /response\.status\s*===\s*401/);
+});
+

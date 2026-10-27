@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('./config/env').loadEnv();
 
 const path = require('node:path');
 const { timingSafeEqual } = require('node:crypto');
@@ -28,7 +28,7 @@ const creditStore = createCreditStore({
   filePath: path.join(__dirname, 'runtime', 'credits.json'),
   legacyGamePath: path.join(gameDirectory, 'game.js'),
 });
-const adminPassword = String(process.env.ADMIN_PASSWORD || '');
+const adminPassword = String(process.env.ADMIN_PASSWORD || '').trim();
 let latestBuildNotice = null;
 let buildRunner;
 
