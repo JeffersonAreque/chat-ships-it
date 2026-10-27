@@ -7,6 +7,8 @@
   const queueEmpty = document.querySelector('#queue-empty');
   const roundNumber = document.querySelector('#round-number');
   const nextRoundButton = document.querySelector('#next-round');
+  const undoButton = document.querySelector('#undo-change');
+  const buildStatus = document.querySelector('#build-status');
   let socket;
 
   function addIdea(idea) {
@@ -61,6 +63,9 @@
     const ideas = Array.isArray(state.ideas) ? state.ideas : [];
     const queue = Array.isArray(state.buildQueue) ? state.buildQueue : [];
     roundNumber.textContent = String(state.round || 1);
+    buildStatus.textContent = state.buildNotice?.message || 'No build running.';
+    buildStatus.dataset.status = state.buildNotice?.status || 'idle';
+    undoButton.disabled = !state.canUndo;
     ideasList.replaceChildren();
     queueList.replaceChildren();
     ideasEmpty.hidden = ideas.length > 0;
@@ -110,6 +115,17 @@
       actionStatus.textContent = error.message;
     } finally {
       nextRoundButton.disabled = false;
+    }
+  });
+
+  undoButton.addEventListener('click', async () => {
+    if (!window.confirm('Undo the last Chat Ships It game change?')) return;
+    undoButton.disabled = true;
+    try {
+      await postAction('undo');
+    } catch (error) {
+      actionStatus.textContent = error.message;
+      undoButton.disabled = false;
     }
   });
 

@@ -27,6 +27,7 @@
       button:disabled { cursor: wait; opacity: .55; }
       .empty { padding: 14px; border-radius: 10px; background: #122035; }
       .status { color: #bae6fd; }
+      #build-status { min-height: 1.4em; padding: 10px 12px; border-left: 3px solid #38bdf8; background: #122035; }
       .queue-status { padding: 4px 8px; border: 1px solid #41607a; border-radius: 999px; color: #bae6fd; font-size: .82rem; white-space: nowrap; }
       @media (max-width: 650px) { li { align-items: flex-start; flex-direction: column; } }
     </style>
@@ -35,9 +36,13 @@
     <main>
       <header>
         <h1>Streamer admin</h1>
-        <button id="next-round" class="secondary" type="button">Next round</button>
+        <div class="actions">
+          <button id="undo-change" class="secondary" type="button" disabled>Undo last change</button>
+          <button id="next-round" class="secondary" type="button">Next round</button>
+        </div>
       </header>
       <p id="connection" role="status">Connecting to the game server…</p>
+      <p id="build-status" role="status" aria-live="polite">No build running.</p>
 
       <section aria-labelledby="ideas-title">
         <div class="section-heading">

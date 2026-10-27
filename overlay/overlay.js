@@ -2,6 +2,7 @@
   const list = document.querySelector('#ideas');
   const empty = document.querySelector('#empty');
   const approved = document.querySelector('#approved');
+  const buildStatus = document.querySelector('#build-status');
 
   function connect() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -16,6 +17,9 @@
       const approval = message.state?.latestApproval;
       approved.hidden = !approval;
       approved.textContent = approval ? `Approved: ${approval.text} by @${approval.author}` : '';
+      const buildNotice = message.state?.buildNotice;
+      buildStatus.hidden = !buildNotice;
+      buildStatus.textContent = buildNotice?.message || '';
       list.replaceChildren();
       empty.hidden = ideas.length > 0;
 
