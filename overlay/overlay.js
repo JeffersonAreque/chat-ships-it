@@ -1,6 +1,7 @@
 (() => {
   const list = document.querySelector('#ideas');
   const empty = document.querySelector('#empty');
+  const approved = document.querySelector('#approved');
 
   function connect() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -12,6 +13,9 @@
       if (message.type !== 'state') return;
 
       const ideas = Array.isArray(message.state?.topIdeas) ? message.state.topIdeas : [];
+      const approval = message.state?.latestApproval;
+      approved.hidden = !approval;
+      approved.textContent = approval ? `Approved: ${approval.text} by @${approval.author}` : '';
       list.replaceChildren();
       empty.hidden = ideas.length > 0;
 

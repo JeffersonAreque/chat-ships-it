@@ -11,6 +11,7 @@
       body { padding: 18px; }
       main { width: min(100%, 520px); padding: 16px; border: 1px solid #7dd3fc55; border-radius: 14px; background: #07111fe8; box-shadow: 0 10px 35px #0007; }
       h1 { margin: 0 0 12px; color: #a5f3fc; font-size: 1.25rem; }
+      #approved { margin: 0 0 12px; padding: 9px 10px; border-left: 3px solid #4ade80; border-radius: 5px; color: #dcfce7; background: #14532d99; }
       ol { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
       li { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding: 10px; border-radius: 9px; background: #16263b; }
       .number { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 50%; color: #06202a; background: #67e8f9; font-weight: 800; }
@@ -24,6 +25,7 @@
   <body>
     <main aria-live="polite">
       <h1>Chat’s ship ideas</h1>
+      <p id="approved" hidden></p>
       <p id="empty">Waiting for the first !idea…</p>
       <ol id="ideas"></ol>
     </main>
