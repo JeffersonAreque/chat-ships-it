@@ -28,14 +28,67 @@ function createIdeaStore({ additionalBannedWords = [] } = {}) {
   const activeIdeaByUser = new Map();
   const voteByUser = new Map();
   let nextIdeaId = 1;
+  let round = 1;
+  let latestApproval = null;
 
   function getSnapshot() {
     const allIdeas = ideas.map((idea) => ({ ...idea }));
-    const topIdeas = [...allIdeas]
+    const topIdeas = allIdeas.filter((idea) => idea.status === 'active')
       .sort((left, right) => right.votes - left.votes || left.id - right.id)
       .slice(0, 5);
 
-    return { round: 1, ideas: allIdeas, topIdeas };
+    return {
+      round,
+      votingOpen: true,
+      ideas: allIdeas,
+      topIdeas,
+      latestApproval: latestApproval ? { ...latestApproval } : null,
+    };
+  }
+
+  function releaseActiveIdea(idea) {
+    const normalizedText = normalizeIdea(idea.text);
+    if (ideasByNormalizedText.get(normalizedText)?.id === idea.id) {
+      ideasByNormalizedText.delete(normalizedText);
+    }
+
+    for (const [user, ideaId] of activeIdeaByUser) {
+      if (ideaId === idea.id) activeIdeaByUser.delete(user);
+    }
+  }
+
+  function approveIdea(ideaId) {
+    const idea = ideas.find((candidate) => candidate.id === Number(ideaId));
+    if (!idea || idea.status !== 'active') {
+      return { accepted: false, reason: 'That idea is no longer active.' };
+    }
+
+    idea.status = 'approved';
+    latestApproval = { ideaId: idea.id, text: idea.text, author: idea.author, round };
+    releaseActiveIdea(idea);
+    return { accepted: true, idea: { ...idea }, round };
+  }
+
+  function rejectIdea(ideaId) {
+    const idea = ideas.find((candidate) => candidate.id === Number(ideaId));
+    if (!idea || idea.status !== 'active') {
+      return { accepted: false, reason: 'That idea is no longer active.' };
+    }
+
+    idea.status = 'rejected';
+    releaseActiveIdea(idea);
+    return { accepted: true, idea: { ...idea } };
+  }
+
+  function nextRound() {
+    ideas.length = 0;
+    ideasByNormalizedText.clear();
+    activeIdeaByUser.clear();
+    voteByUser.clear();
+    nextIdeaId = 1;
+    round += 1;
+    latestApproval = null;
+    return getSnapshot();
   }
 
   function addIdea(user, rawText) {
@@ -57,7 +110,7 @@ function createIdeaStore({ additionalBannedWords = [] } = {}) {
       return { accepted: true, merged: true, idea: { ...idea } };
     }
 
-    idea = { id: nextIdeaId, author, text, votes: 0 };
+    idea = { id: nextIdeaId, author, text, votes: 0, status: 'active' };
     nextIdeaId += 1;
     ideas.push(idea);
     ideasByNormalizedText.set(normalizedText, idea);
@@ -75,6 +128,7 @@ function createIdeaStore({ additionalBannedWords = [] } = {}) {
     if (!Number.isSafeInteger(ideaId) || ideaId < 1 || !idea) {
       return { accepted: false, reason: 'That idea number is not on the board.' };
     }
+    if (idea.status !== 'active') return { accepted: false, reason: 'That idea is no longer open for votes.' };
     if (voteByUser.has(userKey)) return { accepted: false, reason: 'You already voted this round.' };
 
     voteByUser.set(userKey, ideaId);
@@ -93,7 +147,7 @@ function createIdeaStore({ additionalBannedWords = [] } = {}) {
     return null;
   }
 
-  return { handleMessage, getSnapshot };
+  return { handleMessage, getSnapshot, approveIdea, rejectIdea, nextRound };
 }
 
 module.exports = { createIdeaStore, MAX_IDEA_LENGTH };
