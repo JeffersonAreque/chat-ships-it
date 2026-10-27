@@ -14,8 +14,6 @@
   }));
 
   let ship;
-  let shipTrail;
-  let trailHue;
   let asteroids;
   let score;
   let spawnTimer;
@@ -24,8 +22,6 @@
 
   function startGame() {
     ship = { x: width / 2, y: height - 75, radius: 17, speed: 290 };
-    shipTrail = [];
-    trailHue = 0;
     asteroids = [];
     score = 0;
     spawnTimer = 0;
@@ -74,22 +70,6 @@
     context.lineTo(6, 17);
     context.fill();
     context.restore();
-  }
-
-  function drawTrail() {
-    for (let i = 1; i < shipTrail.length; i += 1) {
-      const point = shipTrail[i];
-      const previous = shipTrail[i - 1];
-      context.strokeStyle = `hsl(${point.hue}, 100%, 65%)`;
-      context.globalAlpha = i / shipTrail.length * 0.8;
-      context.lineWidth = 5;
-      context.lineCap = 'round';
-      context.beginPath();
-      context.moveTo(previous.x, previous.y);
-      context.lineTo(point.x, point.y);
-      context.stroke();
-    }
-    context.globalAlpha = 1;
   }
 
   function spawnAsteroid() {
@@ -157,11 +137,6 @@
       const diagonalScale = horizontal && vertical ? Math.SQRT1_2 : 1;
       ship.x = Math.max(ship.radius, Math.min(width - ship.radius, ship.x + horizontal * ship.speed * delta * diagonalScale));
       ship.y = Math.max(ship.radius + 8, Math.min(height - ship.radius, ship.y + vertical * ship.speed * delta * diagonalScale));
-      if (horizontal || vertical) {
-        shipTrail.push({ x: ship.x, y: ship.y, hue: trailHue });
-        trailHue = (trailHue + 14) % 360;
-        if (shipTrail.length > 36) shipTrail.shift();
-      }
 
       spawnTimer += delta;
       if (spawnTimer >= Math.max(0.34, 0.9 - score / 1800)) {
@@ -178,11 +153,9 @@
 
       score += delta * 10;
       scoreLabel.textContent = String(Math.floor(score));
-      drawTrail();
       drawShip();
     } else {
       for (const asteroid of asteroids) drawAsteroid(asteroid);
-      drawTrail();
       drawShip();
       drawGameOver();
     }
