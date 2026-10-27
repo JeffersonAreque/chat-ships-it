@@ -51,13 +51,14 @@
     context.textAlign = 'left';
     context.fillStyle = '#bae6fd';
     context.fillText("Boss by @luis", 16, 28);
+    context.fillText("Green Ship by @RealBuildTester", 16, 48);
     // CHAT_SHIPS_IT_BOSS_CREDIT_END
   }
 
   function drawShip() {
     context.save();
     context.translate(ship.x, ship.y);
-    context.fillStyle = '#fb7185';
+    context.fillStyle = '#22c55e';
     context.strokeStyle = '#e0fbff';
     context.lineWidth = 2;
     context.beginPath();
