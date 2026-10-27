@@ -10,6 +10,12 @@ function sanitizeAuthor(author) {
   return String(author || 'viewer').replace(/^@/, '').replace(/[\r\n\u0000-\u001f]/g, '').trim().slice(0, 30) || 'viewer';
 }
 
+function sanitizeFeatureTitle(value) {
+  const words = String(value || '').normalize('NFKC').match(/[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu) || [];
+  if (words.length < 2 || words.length > 3) return 'Game Update';
+  return words.map((word) => `${word[0].toLocaleUpperCase()}${word.slice(1).toLocaleLowerCase()}`).join(' ');
+}
+
 function extractLegacyCredits(source) {
   const start = source.indexOf(LEGACY_START);
   const end = source.indexOf(LEGACY_END, start + LEGACY_START.length);
@@ -67,7 +73,8 @@ function createCreditStore({ filePath, legacyGamePath } = {}) {
       id: crypto.randomUUID(),
       ideaId: Number(item?.ideaId) || null,
       author,
-      text: `Boss by @${author}`,
+      featureTitle: sanitizeFeatureTitle(item?.featureTitle),
+      text: `${sanitizeFeatureTitle(item?.featureTitle)} by @${author}`,
       createdAt: new Date().toISOString(),
     };
     const nextCredits = [...credits, credit].slice(-MAX_CREDITS);
@@ -76,7 +83,12 @@ function createCreditStore({ filePath, legacyGamePath } = {}) {
     return { ...credit };
   }
 
-  return { getCredits, addBuild };
+  function clear() {
+    persist([]);
+    credits = [];
+  }
+
+  return { getCredits, addBuild, clear };
 }
 
-module.exports = { createCreditStore, extractLegacyCredits, MAX_CREDITS };
+module.exports = { createCreditStore, extractLegacyCredits, sanitizeFeatureTitle, MAX_CREDITS };

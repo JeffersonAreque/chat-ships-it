@@ -8,6 +8,7 @@
   const roundNumber = document.querySelector('#round-number');
   const nextRoundButton = document.querySelector('#next-round');
   const undoButton = document.querySelector('#undo-change');
+  const resetDemoButton = document.querySelector('#reset-demo');
   const buildStatus = document.querySelector('#build-status');
   const buildError = document.querySelector('#build-error');
   let socket;
@@ -69,6 +70,7 @@
     buildError.textContent = state.buildNotice?.errorDetails || '';
     buildError.hidden = !state.buildNotice?.errorDetails;
     undoButton.disabled = !state.canUndo;
+    resetDemoButton.disabled = queue.some((entry) => ['waiting', 'building'].includes(entry.status));
     ideasList.replaceChildren();
     queueList.replaceChildren();
     ideasEmpty.hidden = ideas.length > 0;
@@ -129,6 +131,18 @@
     } catch (error) {
       actionStatus.textContent = error.message;
       undoButton.disabled = false;
+    }
+  });
+
+  resetDemoButton.addEventListener('click', async () => {
+    if (!window.confirm('Reset the demo to the starter game? This clears viewer credits, ideas, votes, and the build queue.')) return;
+    resetDemoButton.disabled = true;
+    try {
+      await postAction('reset-demo');
+    } catch (error) {
+      actionStatus.textContent = error.message;
+    } finally {
+      resetDemoButton.disabled = false;
     }
   });
 

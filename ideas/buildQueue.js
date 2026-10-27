@@ -12,6 +12,7 @@ function createBuildQueue() {
       text: idea.text,
       author: idea.author,
       votes: idea.votes,
+      featureTitle: null,
       status: 'waiting',
       createdAt: new Date().toISOString(),
     };
@@ -35,15 +36,21 @@ function createBuildQueue() {
     return items.some((item) => item.status === 'waiting');
   }
 
-  function updateStatus(id, status) {
+  function updateStatus(id, status, details = {}) {
     if (!BUILD_STATUSES.includes(status)) return { accepted: false, reason: 'Unknown build status.' };
     const item = items.find((candidate) => candidate.id === Number(id));
     if (!item) return { accepted: false, reason: 'Build queue item not found.' };
     item.status = status;
+    if (typeof details.featureTitle === 'string') item.featureTitle = details.featureTitle;
     return { accepted: true, item: { ...item } };
   }
 
-  return { enqueue, getItems, claimNext, hasWaiting, updateStatus };
+  function clear() {
+    items.length = 0;
+    nextId = 1;
+  }
+
+  return { enqueue, getItems, claimNext, hasWaiting, updateStatus, clear };
 }
 
 module.exports = { createBuildQueue, BUILD_STATUSES };

@@ -169,6 +169,10 @@ app.get('/admin/api/state', (request, response) => {
   response.json({ state: getAppState({ includeBuildErrorDetails: true }) });
 });
 app.post('/admin/api/approve', (request, response) => {
+  if (buildRunner.isResetting()) {
+    response.status(409).json({ error: 'The demo is being reset. Try again in a moment.' });
+    return;
+  }
   const result = ideaStore.approveIdea(request.body?.ideaId);
   if (!result.accepted) {
     response.status(400).json({ error: result.reason });
@@ -176,6 +180,12 @@ app.post('/admin/api/approve', (request, response) => {
   }
 
   const item = buildQueue.enqueue(result.idea, result.round);
+  latestBuildNotice = {
+    status: 'queued',
+    message: `Queued @${item.author}'s idea: ${item.text}`,
+    startedAt: Date.parse(item.createdAt),
+    item: { id: item.id, ideaId: item.ideaId, author: item.author, text: item.text },
+  };
   broadcastState();
   buildRunner.processQueue().catch((error) => console.error('[builder] Queue failed:', error.message));
   response.json({ item, state: getAppState() });
@@ -201,6 +211,27 @@ app.post('/admin/api/undo', async (request, response) => {
     response.status(400).json({ error: result.reason, state: getAppState() });
     return;
   }
+  response.json({ state: getAppState() });
+});
+app.post('/admin/api/reset-demo', async (request, response) => {
+  const result = await buildRunner.resetDemo();
+  if (!result.accepted) {
+    response.status(400).json({ error: result.reason, state: getAppState() });
+    return;
+  }
+
+  try {
+    creditStore.clear();
+  } catch (error) {
+    response.status(500).json({ error: `The starter game was restored, but credits could not be cleared: ${error.message}` });
+    return;
+  }
+
+  ideaStore.reset();
+  buildQueue.clear();
+  latestBuildNotice = null;
+  broadcastState();
+  broadcastGameReload();
   response.json({ state: getAppState() });
 });
 app.use('/admin', express.static(adminDirectory));

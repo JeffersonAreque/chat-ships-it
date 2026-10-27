@@ -12,7 +12,8 @@
       main { width: min(100%, 520px); padding: 16px; border: 1px solid #7dd3fc55; border-radius: 14px; background: #07111fe8; box-shadow: 0 10px 35px #0007; }
       h1 { margin: 0 0 12px; color: #a5f3fc; font-size: 1.25rem; }
       #approved { margin: 0 0 12px; padding: 9px 10px; border-left: 3px solid #4ade80; border-radius: 5px; color: #dcfce7; background: #14532d99; }
-      #build-status { margin: 0 0 12px; padding: 8px 10px; border-left: 3px solid #38bdf8; border-radius: 5px; color: #bae6fd; background: #0c2740dd; }
+      #build-banner { margin: 0 0 12px; padding: 9px 10px; border: 1px solid #38bdf8aa; border-radius: 8px; color: #e0f2fe; background: #082f49ee; font-size: .9rem; font-weight: 650; }
+      #build-toast { position: fixed; z-index: 5; top: 18px; left: 50%; width: max-content; max-width: calc(100vw - 32px); transform: translateX(-50%); padding: 12px 18px; border: 1px solid #4ade80aa; border-radius: 10px; color: #dcfce7; background: #14532dee; box-shadow: 0 12px 36px #0008; font-weight: 750; text-align: center; }
       ol { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
       li { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding: 10px; border-radius: 9px; background: #16263b; }
       .number { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 50%; color: #06202a; background: #67e8f9; font-weight: 800; }
@@ -27,10 +28,12 @@
     <main aria-live="polite">
       <h1>Chat’s ship ideas</h1>
       <p id="approved" hidden></p>
-      <p id="build-status" hidden></p>
+      <p id="build-banner" role="status" aria-live="polite" hidden></p>
       <p id="empty">Waiting for the first !idea…</p>
       <ol id="ideas"></ol>
     </main>
+    <p id="build-toast" role="status" aria-live="polite" hidden></p>
+    <script src="/game/buildNotice.js" defer></script>
     <script src="/overlay/overlay.js" defer></script>
   </body>
 </html>

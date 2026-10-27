@@ -43,12 +43,12 @@ Move your ship with the arrow keys or **W A S D**. Dodge asteroids to keep your 
 - `chat/twitchAdapter.js` reads Twitch IRC messages and handles server keepalives; both adapters send `{ user, text }` into the same idea board.
 - `ideas/ideaStore.js` handles `!idea`, `!vote`, moderation, and round resets in memory. Idea text is limited to 120 characters, each user can submit once and vote once per round, and case/spacing duplicates merge into the first idea.
 - `ideas/buildQueue.js` stores streamer-approved ideas with `waiting`, `building`, `done`, or `failed` statuses.
-- `builder/codexRunner.js` claims waiting ideas one at a time. Mock mode changes the ship color; real mode runs `codex exec` in the ignored `runtime/workspace/` with no approvals, workspace-only writes, disabled network access, and a 3-minute timeout. If a real candidate fails validation, Codex gets one retry with the validator error.
+- `builder/codexRunner.js` claims waiting ideas one at a time. Mock mode changes the ship color; real mode runs `codex exec` in the ignored `runtime/workspace/` with no approvals, workspace-only writes, disabled network access, and a 3-minute timeout. If a real candidate fails validation, Codex gets one retry with the validator error and returns a short feature title.
 - `builder/gameValidator.js` syntax-checks each candidate and runs 350 frames with a fake canvas before it can replace the game. A failed build leaves the current game in place.
-- `game/reloader.js` listens for a successful build and reloads the `/game` page automatically. Only `game/game.js` is copied back and committed.
+- `game/reloader.js` listens for a successful build and reloads the `/game` page automatically. `game/buildNotice.js` shows live build stages, elapsed time, and the shipped toast on `/game` and `/overlay`. Only `game/game.js` is copied back and committed.
 - `credits/creditStore.js` stores viewer credits in ignored `runtime/credits.json`; `game/credits.js` renders those credits in the page outside the canvas and the AI-edited game code.
 - `overlay/index.html` and `overlay/overlay.js` show live ideas, approval credit, and build status for OBS. The background outside the board is transparent.
-- `admin/index.html` and `admin/admin.js` make the password-protected `/admin` panel for approving, rejecting, queuing ideas, starting a fresh round, and undoing the last game change.
+- `admin/index.html` and `admin/admin.js` make the password-protected `/admin` panel for approving, rejecting, queuing ideas, starting a fresh round, undoing the last game change, and resetting the demo to its starter game.
 - `.env` is for local settings and secrets. It is ignored by Git; share only `.env.example` with placeholder settings.
 
 Add extra blocked words as a comma-separated list in `BANNED_WORDS`. The game server has a small built-in starter list too.

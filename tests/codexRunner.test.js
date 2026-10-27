@@ -5,7 +5,14 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 const { createBuildQueue } = require('../ideas/buildQueue');
-const { codexExecArgs, createCodexPrompt, createCodexRunner } = require('../builder/codexRunner');
+const {
+  codexExecArgs,
+  createCodexPrompt,
+  createCodexRunner,
+  fallbackFeatureTitle,
+  featureTitleFromOutput,
+  STARTER_GAME_COMMIT,
+} = require('../builder/codexRunner');
 
 async function makeProject(t) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'chat-ships-build-'));
@@ -39,6 +46,13 @@ test('keeps viewer text untrusted and uses only the restricted Codex sandbox opt
   assert.ok(!args.some((argument) => /dangerously-bypass|danger-full-access|--add-dir/i.test(argument)));
 });
 
+test('uses Codex feature titles with a safe two-word fallback', () => {
+  const item = { text: 'make the asteroids cats' };
+  assert.equal(featureTitleFromOutput('Finished.\nFEATURE_TITLE: Cat Asteroids\n', item), 'Cat Asteroids');
+  assert.equal(featureTitleFromOutput('FEATURE_TITLE: Cat', item), 'Asteroids Cats');
+  assert.equal(fallbackFeatureTitle('!@#$'), 'Game Update');
+});
+
 test('retries one invalid Codex candidate with the validator error and ships a valid candidate without a credit in game.js', async (t) => {
   const root = await makeProject(t);
   const original = await fs.readFile(path.join(root, 'game', 'game.js'), 'utf8');
@@ -65,6 +79,7 @@ test('retries one invalid Codex candidate with the validator error and ships a v
       assert.match(prompt, /SyntaxError|Unexpected|const/i);
       const validCandidate = original.replace("context.fillStyle = '#22c55e';", "context.fillStyle = '#34d399';");
       await fs.writeFile(filePath, validCandidate, 'utf8');
+      return { stdout: 'FEATURE_TITLE: Cat Asteroids' };
     },
   });
 
@@ -74,8 +89,10 @@ test('retries one invalid Codex candidate with the validator error and ships a v
   assert.doesNotMatch(shipped, /@TestViewer|Boss by/);
   assert.equal(queue.getItems()[0].status, 'done');
   assert.equal(prompts.length, 2);
-  assert.deepEqual(statuses.map((event) => event.status), ['building', 'retrying', 'done']);
-  assert.match(statuses[1].message, /retrying/i);
+  assert.deepEqual(statuses.map((event) => event.status), ['building', 'validating', 'retrying', 'validating', 'done']);
+  assert.match(statuses[2].message, /retrying/i);
+  assert.equal(queue.getItems()[0].featureTitle, 'Cat Asteroids');
+  assert.equal(statuses.at(-1).message, 'Shipped! Cat Asteroids by @TestViewer');
   assert.match(execFileSync('git', ['show', '--format=%s', '--no-patch', 'HEAD'], { cwd: root, encoding: 'utf8' }), /Chat idea #1 by @TestViewer/);
 });
 
@@ -102,7 +119,31 @@ test('marks the build failed after its single retry and leaves the old game unto
   await runner.processQueue();
   assert.equal(calls, 2);
   assert.equal(queue.getItems()[0].status, 'failed');
-  assert.deepEqual(statuses.map((event) => event.status), ['building', 'retrying', 'failed']);
+  assert.deepEqual(statuses.map((event) => event.status), ['building', 'validating', 'retrying', 'validating', 'failed']);
   assert.equal(await fs.readFile(path.join(root, 'game', 'game.js'), 'utf8'), original);
+});
+
+test('resetDemo restores the configured starter game commit and disables undo', async (t) => {
+  const root = await makeProject(t);
+  const starterCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+  const baseline = await fs.readFile(path.join(root, 'game', 'game.js'), 'utf8');
+  const queue = createBuildQueue();
+  enqueueIdea(queue);
+  const runner = createCodexRunner({
+    buildQueue: queue,
+    mode: 'mock',
+    projectRoot: root,
+    baselineCommit: starterCommit,
+  });
+
+  await runner.processQueue();
+  assert.equal(queue.getItems()[0].status, 'done');
+  assert.equal(runner.canUndo(), true);
+  const result = await runner.resetDemo();
+  assert.equal(result.accepted, true);
+  assert.equal(await fs.readFile(path.join(root, 'game', 'game.js'), 'utf8'), baseline);
+  assert.equal(runner.canUndo(), false);
+  assert.match(execFileSync('git', ['log', '-1', '--format=%s'], { cwd: root, encoding: 'utf8' }), /Reset demo to starter game/);
+  assert.equal(STARTER_GAME_COMMIT.length, 40);
 });
 

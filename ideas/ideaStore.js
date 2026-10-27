@@ -91,6 +91,17 @@ function createIdeaStore({ additionalBannedWords = [] } = {}) {
     return getSnapshot();
   }
 
+  function reset() {
+    ideas.length = 0;
+    ideasByNormalizedText.clear();
+    activeIdeaByUser.clear();
+    voteByUser.clear();
+    nextIdeaId = 1;
+    round = 1;
+    latestApproval = null;
+    return getSnapshot();
+  }
+
   function addIdea(user, rawText) {
     const author = String(user || '').trim().replace(/^@/, '');
     const userKey = normalizeUser(author);
@@ -147,7 +158,7 @@ function createIdeaStore({ additionalBannedWords = [] } = {}) {
     return null;
   }
 
-  return { handleMessage, getSnapshot, approveIdea, rejectIdea, nextRound };
+  return { handleMessage, getSnapshot, approveIdea, rejectIdea, nextRound, reset };
 }
 
 module.exports = { createIdeaStore, MAX_IDEA_LENGTH };

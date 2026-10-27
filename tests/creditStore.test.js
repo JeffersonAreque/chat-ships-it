@@ -19,14 +19,18 @@ test('migrates existing game-code credits and persists new server-managed credit
 
   const store = createCreditStore({ filePath, legacyGamePath });
   assert.equal(store.getCredits()[0].text, 'Cats by @oldviewer');
-  const added = store.addBuild({ id: 4, ideaId: 12, author: 'NewViewer' });
-  assert.equal(added.text, 'Boss by @NewViewer');
+  const added = store.addBuild({ id: 4, ideaId: 12, author: 'NewViewer', featureTitle: 'Cat Asteroids' });
+  assert.equal(added.text, 'Cat Asteroids by @NewViewer');
+  assert.equal(store.addBuild({ id: 5, author: 'FallbackViewer' }).text, 'Game Update by @FallbackViewer');
 
   const reloaded = createCreditStore({ filePath, legacyGamePath });
   assert.deepEqual(reloaded.getCredits().map((credit) => credit.text), [
-    'Boss by @NewViewer',
+    'Game Update by @FallbackViewer',
+    'Cat Asteroids by @NewViewer',
     'Cats by @oldviewer',
   ]);
+  reloaded.clear();
+  assert.deepEqual(createCreditStore({ filePath }).getCredits(), []);
 });
 
 test('renders credits in the game page outside game.js using text content', () => {
