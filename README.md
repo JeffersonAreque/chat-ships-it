@@ -5,7 +5,7 @@ A small browser game for the Codex x TwitchCon Hackathon. The long-term idea is 
 ## Get it running
 
 1. Install [Node.js](https://nodejs.org/) if you do not already have it.
-2. In this project folder, copy `.env.example` to `.env`. Keep `CHAT_MODE=dev` while testing locally. The example file contains no secrets.
+2. In this project folder, copy `.env.example` to `.env`. Keep `CHAT_MODE=dev` while testing locally. Never commit `.env` or put a real access token in `.env.example`.
 3. Install the project packages:
 
    ```sh
@@ -23,6 +23,8 @@ A small browser game for the Codex x TwitchCon Hackathon. The long-term idea is 
    - <http://localhost:3000/overlay> shows the five most-voted ideas on a transparent background.
    - <http://localhost:3000/dev> lets you send fake chat messages while `CHAT_MODE=dev`.
 
+Set `CHAT_MODE=twitch` and `TWITCH_CHANNEL` in `.env` to try Twitch IRC. The adapter can try the requested anonymous `justinfan` login, or use `TWITCH_CHAT_NICK` plus `TWITCH_CHAT_TOKEN` if they are set. Twitch's current IRC docs require a `chat:read` access token, so anonymous login may be rejected.
+
 ## Play
 
 Move your ship with the arrow keys or **W A S D**. Dodge asteroids to keep your score climbing. After a crash, press **Space** to restart.
@@ -33,6 +35,7 @@ Move your ship with the arrow keys or **W A S D**. Dodge asteroids to keep your 
 - `game/index.html` is the page and canvas shown at `/game`.
 - `game/game.js` contains the game logic. It is the only file future AI game edits should change.
 - `chat/devAdapter.js` turns messages from the local tester into chat events; `chat/dev.html` and `chat/dev.js` make the `/dev` page.
+- `chat/twitchAdapter.js` reads Twitch IRC messages and handles server keepalives; both adapters send `{ user, text }` into the same idea board.
 - `ideas/ideaStore.js` handles `!idea` and `!vote` in memory. Idea text is limited to 120 characters, each user can submit once and vote once per server run, and case/spacing duplicates merge into the first idea.
 - `overlay/index.html` and `overlay/overlay.js` show live idea and vote updates for OBS. The background outside the board is transparent.
 - `.env` is for local settings and secrets. It is ignored by Git; share only `.env.example` with placeholder settings.

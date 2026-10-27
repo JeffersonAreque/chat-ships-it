@@ -26,6 +26,8 @@ const chatAdapter = chatMode === 'dev'
   ? createDevAdapter()
   : require('./chat/twitchAdapter').createTwitchAdapter({
     channel: process.env.TWITCH_CHANNEL,
+    token: process.env.TWITCH_CHAT_TOKEN,
+    username: process.env.TWITCH_CHAT_NICK,
     onStatus: (status) => console.log(`[Twitch chat] ${status}`),
   });
 
