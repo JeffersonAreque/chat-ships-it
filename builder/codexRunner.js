@@ -48,7 +48,7 @@ function normalizeFeatureTitle(value) {
 }
 
 const TITLE_STOP_WORDS = new Set(['a', 'an', 'and', 'as', 'at', 'by', 'for', 'from', 'in', 'it', 'of', 'on', 'that', 'the', 'to', 'with']);
-const TITLE_ACTION_WORDS = new Set(['add', 'block', 'blocks', 'change', 'create', 'give', 'let', 'make', 'put', 'replace', 'turn']);
+const TITLE_ACTION_WORDS = new Set(['add', 'block', 'blocks', 'change', 'create', 'give', 'leave', 'leaves', 'let', 'make', 'put', 'replace', 'turn']);
 
 function featureTokens(value) {
   return (String(value || '').normalize('NFKC').toLocaleLowerCase().match(/[\p{L}\p{N}]+/gu) || [])
@@ -63,17 +63,26 @@ function fallbackFeatureTitle(ideaText) {
   return titleCase(words.slice(0, 3));
 }
 
-function featureTitleFromOutput(stdout, item, usedTitles = []) {
+function featureTitleFromOutput(stdout, item, usedTitles = [], onRejected = () => {}) {
   const matches = [...String(stdout || '').replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, '').matchAll(/^\s*FEATURE_TITLE:\s*(.*?)\s*$/gim)];
   const candidate = normalizeFeatureTitle(matches.at(-1)?.[1]);
-  if (!candidate) return fallbackFeatureTitle(item?.text);
+  if (!candidate) {
+    onRejected(matches.length ? 'title was missing or not 2–3 words' : 'Codex returned no FEATURE_TITLE line', matches.at(-1)?.[1] || '');
+    return fallbackFeatureTitle(item?.text);
+  }
 
   const used = new Set([...usedTitles].map((title) => normalizeFeatureTitle(title)?.toLocaleLowerCase()).filter(Boolean));
-  if (used.has(candidate.toLocaleLowerCase())) return fallbackFeatureTitle(item?.text);
+  if (used.has(candidate.toLocaleLowerCase())) {
+    onRejected('title was already used by an earlier shipped build', candidate);
+    return fallbackFeatureTitle(item?.text);
+  }
 
   const ideaTokens = new Set(featureTokens(item?.text));
   const titleMatches = featureTokens(candidate).filter((word) => ideaTokens.has(word));
-  if (titleMatches.length === 0) return fallbackFeatureTitle(item?.text);
+  if (titleMatches.length === 0) {
+    onRejected('title had no meaningful words in common with the viewer idea', candidate);
+    return fallbackFeatureTitle(item?.text);
+  }
   return candidate;
 }
 
@@ -371,7 +380,9 @@ function createCodexRunner({
         candidate = await readCandidate(workspaceDirectory, originalSource);
       } else {
         const buildResult = await codexExecutor(createCodexPrompt(item), workspaceDirectory, timeoutMs);
-        featureTitle = featureTitleFromOutput(buildResult?.stdout, item, usedFeatureTitles);
+        featureTitle = featureTitleFromOutput(buildResult?.stdout, item, usedFeatureTitles, (reason, title) => {
+          console.warn(`[builder] Ignoring Codex title for build ${item.id} (${JSON.stringify(title)}): ${reason}; using an idea-based fallback.`);
+        });
         emitStatus('validating', item);
         try {
           candidate = await readCandidate(workspaceDirectory, originalSource);
@@ -379,7 +390,9 @@ function createCodexRunner({
           emitStatus('retrying', item);
           await prepareWorkspace(workspaceDirectory, originalSource);
           const retryResult = await codexExecutor(createCodexPrompt(item, validationError.message), workspaceDirectory, timeoutMs);
-          featureTitle = featureTitleFromOutput(retryResult?.stdout, item, usedFeatureTitles);
+          featureTitle = featureTitleFromOutput(retryResult?.stdout, item, usedFeatureTitles, (reason, title) => {
+            console.warn(`[builder] Ignoring Codex title for build ${item.id} (${JSON.stringify(title)}): ${reason}; using an idea-based fallback.`);
+          });
           emitStatus('validating', item);
           candidate = await readCandidate(workspaceDirectory, originalSource);
         }

@@ -1,56 +1,76 @@
 # Chat Ships It
 
-A small browser game for the Codex x TwitchCon Hackathon. The long-term idea is to let Twitch chat suggest game changes and let the streamer approve what gets built.
+A Twitch stream mini-game where viewers suggest changes and the streamer chooses which idea Codex builds.
 
-## Get it running
+**Preview:** Add a screenshot or short GIF of the game and stream overlay here.
 
-1. Install [Node.js](https://nodejs.org/) if you do not already have it.
-2. In this project folder, copy `.env.example` to `.env`. Keep `CHAT_MODE=dev` while testing locally, and change `ADMIN_PASSWORD` to a password you choose. Never commit `.env` or put real credentials in `.env.example`.
-3. Install the project packages:
+## How it works
 
-   ```sh
-   npm install
-   ```
+1. Viewers send `!idea <change>` in Twitch chat, or use `/dev` to test with fake chat.
+2. Viewers vote with `!vote <number>`. The overlay shows the active ideas and live vote counts.
+3. The streamer reviews the board in `/admin` and approves or rejects ideas. Nothing is built without approval.
+4. An approved idea enters the queue. In real mode, Codex works in an isolated, temporary workspace containing only `game.js`.
+5. The server validates the candidate JavaScript and runs it for 350 frames with a fake canvas before applying it.
+6. A validation failure gets one retry with the validator message. If the retry fails, the existing game stays in place.
+7. A passing `game/game.js` is committed to Git. The game hot-reloads and shows a shipped toast and viewer credit.
+8. The streamer can use **Undo last change** to restore the previous game version or **Reset demo** to restore the starter game and clear the board and credits.
 
-4. Start the server:
+## Pages
 
-   ```sh
-   npm start
-   ```
+- `/game` — playable canvas game and OBS browser source.
+- `/overlay` — transparent chat idea board, vote totals, and build updates for OBS.
+- `/admin` — password-protected streamer controls, build queue, errors, undo, and demo reset.
+- `/dev` — local fake-chat tester, available when `CHAT_MODE=dev`.
 
-Run the checks with `npm test`.
+## Requirements
 
-5. Open these pages in a browser:
-   - <http://localhost:3000/game> is the game (also the OBS browser source).
-   - <http://localhost:3000/overlay> shows the five most-voted ideas on a transparent background.
-   - <http://localhost:3000/dev> lets you send fake chat messages while `CHAT_MODE=dev`.
-   - <http://localhost:3000/admin> is the streamer panel. Sign in with username `admin` and the password from `.env`.
+- Node.js 20 or newer.
+- Git, for build commits and undo.
+- Codex CLI installed and signed in only if you choose `CODEX_MODE=real`.
 
-Keep `CODEX_MODE=mock` to test safely without using Codex. To use the real CLI, set `CODEX_MODE=real` and make sure `codex` is installed and signed in.
+## Setup
 
-Set `CHAT_MODE=twitch` and `TWITCH_CHANNEL` in `.env` to try Twitch IRC. The adapter can try the requested anonymous `justinfan` login, or use `TWITCH_CHAT_NICK` plus `TWITCH_CHAT_TOKEN` if they are set. Twitch's current IRC docs require a `chat:read` access token, so anonymous login may be rejected.
+1. Copy `.env.example` to `.env` and set `ADMIN_PASSWORD` to a private password. `.env` is ignored by Git; keep real credentials there and never commit it.
+2. Install dependencies with `npm install`.
+3. Start the server with `npm start`.
+4. Open <http://localhost:3000/game>. The streamer panel is at <http://localhost:3000/admin>; sign in as `admin` with the password from `.env`.
+5. Keep `CHAT_MODE=dev` and `CODEX_MODE=mock` for a local demo. Open `/dev`, send an idea, vote, then approve it in `/admin`.
+6. To read Twitch chat, set `CHAT_MODE=twitch` and `TWITCH_CHANNEL` to the channel login (without `#`). The reader uses Twitch IRC over WebSocket with a generated anonymous `justinfanXXXXX` nickname; no Twitch credentials are needed. Anonymous join and message reception have been tested. The adapter only reads and does not send chat messages. Optional `TWITCH_CHAT_NICK` and `TWITCH_CHAT_TOKEN` settings are available if you later choose authenticated IRC access.
+7. To use Codex for approved builds, set `CODEX_MODE=real`. Install and sign in to the Codex CLI first. `CODEX_MODE=mock` is the default and uses a harmless scripted change instead.
 
-## Play
+Run the test suite with `npm test`.
 
-Move your ship with the arrow keys or **W A S D**. Dodge asteroids to keep your score climbing. After a crash, press **Space** to restart.
+## Configuration
+
+All settings are listed in `.env.example`:
+
+- `PORT` selects the local web server port.
+- `CHAT_MODE=dev|twitch` selects the fake-chat or Twitch IRC adapter.
+- `TWITCH_CHANNEL` is the channel login. `TWITCH_CHAT_NICK` and `TWITCH_CHAT_TOKEN` are optional and should be empty for anonymous read-only mode.
+- `CODEX_MODE=mock|real` selects the mock change or Codex CLI build.
+- `CODEX_CLI` optionally names a Codex executable; leave it empty to use `codex` from `PATH`.
+- `ADMIN_PASSWORD` protects the streamer routes.
+- `BANNED_WORDS` adds comma-separated blocked words to the built-in filter.
+
+## Safety model
+
+- Chat suggestions are untrusted text. The idea board enforces a 120-character limit, a built-in and configurable banned-words filter, one active idea per user, and one vote per user per round. Duplicate ideas are merged. These are per-round limits, not a timed cooldown.
+- Only the streamer can approve an idea. Approving adds it to the build queue; it does not execute the viewer's text as a command.
+- Real Codex builds start from a clean ignored `runtime/workspace/` containing only a copy of `game.js`. The CLI gets workspace-only write access, network access is disabled, approvals are disabled inside that sandbox, MCP servers are disabled, and each invocation times out after three minutes.
+- The Codex prompt says to edit only `game.js` and treats the viewer idea as a feature request, not instructions. The server rejects extra workspace files and validates the candidate before applying it.
+- `game/game.js` is the only project source file the runtime builder applies or commits. A failure keeps the previous game. Every successful change is a Git commit; admin undo creates a Git commit restoring the prior version.
+- `.env`, temporary workspace files, and runtime credits are ignored. Keep secrets out of source files and screenshots. If hosting the app beyond your own machine, serve it over HTTPS and protect `/admin` with a strong password.
 
 ## Project map
 
-- `server.js` starts Express, the WebSocket connection, the selected chat adapter, and the idea board.
-- `game/index.html` is the page and canvas shown at `/game`.
-- `game/game.js` contains the game logic. It is the only file future AI game edits should change.
-- `chat/devAdapter.js` turns messages from the local tester into chat events; `chat/dev.html` and `chat/dev.js` make the `/dev` page.
-- `chat/twitchAdapter.js` reads Twitch IRC messages and handles server keepalives; both adapters send `{ user, text }` into the same idea board.
-- `ideas/ideaStore.js` handles `!idea`, `!vote`, moderation, and round resets in memory. Idea text is limited to 120 characters, each user can submit once and vote once per round, and case/spacing duplicates merge into the first idea.
-- `ideas/buildQueue.js` stores streamer-approved ideas with `waiting`, `building`, `done`, or `failed` statuses.
-- `builder/codexRunner.js` claims waiting ideas one at a time. Mock mode changes the ship color; real mode runs `codex exec` in the ignored `runtime/workspace/` with no approvals, workspace-only writes, disabled network access, and a 3-minute timeout. If a real candidate fails validation, Codex gets one retry with the validator error and returns a short feature title.
-- `builder/gameValidator.js` syntax-checks each candidate and runs 350 frames with a fake canvas before it can replace the game. A failed build leaves the current game in place.
-- `game/reloader.js` listens for a successful build and reloads the `/game` page automatically. `game/buildNotice.js` shows live build stages, elapsed time, and the shipped toast on `/game` and `/overlay`. Only `game/game.js` is copied back and committed.
-- `credits/creditStore.js` stores viewer credits in ignored `runtime/credits.json`; `game/credits.js` renders those credits in the page outside the canvas and the AI-edited game code.
-- `overlay/index.html` and `overlay/overlay.js` show live ideas, approval credit, and build status for OBS. The background outside the board is transparent.
-- `admin/index.html` and `admin/admin.js` make the password-protected `/admin` panel for approving, rejecting, queuing ideas, starting a fresh round, undoing the last game change, and resetting the demo to its starter game.
-- `.env` is for local settings and secrets. It is ignored by Git; share only `.env.example` with placeholder settings.
+- `server.js` starts Express, WebSockets, the chat adapter, and the game builder.
+- `chat/` contains the shared chat adapter implementations and local tester.
+- `ideas/` handles submissions, votes, moderation, and the in-memory build queue.
+- `builder/` runs Codex in the sandbox and validates game changes.
+- `game/game.js` is the canvas game code; it is the only file the runtime AI builder may edit.
+- `credits/` stores viewer credits outside the game code; runtime data is kept under ignored `runtime/`.
+- `overlay/` and `admin/` contain the OBS overlay and streamer panel.
 
-Add extra blocked words as a comma-separated list in `BANNED_WORDS`. The game server has a small built-in starter list too.
+## License
 
-The idea board and build queue are in memory, so restarting the server clears them. “Next round” clears current ideas and votes but leaves the build queue intact. Every successful game change and undo is a Git commit; use **Undo last change** in `/admin` to restore the previous game version.
+This project is available under the MIT License. See [LICENSE](LICENSE).

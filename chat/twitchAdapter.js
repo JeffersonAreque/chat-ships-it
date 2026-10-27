@@ -19,7 +19,7 @@ function parseTags(rawTags = '') {
   }));
 }
 
-function createTwitchAdapter({ channel, token = '', username = '', onStatus = () => {} } = {}) {
+function createTwitchAdapter({ channel, token = '', username = '', onStatus = () => {}, WebSocketImpl = WebSocket } = {}) {
   const cleanChannel = String(channel || '').trim().replace(/^#/, '').toLowerCase();
   const cleanToken = String(token || '').trim().replace(/^oauth:/i, '');
   const cleanUsername = String(username || '').trim().replace(/^@/, '').toLowerCase();
@@ -47,7 +47,7 @@ function createTwitchAdapter({ channel, token = '', username = '', onStatus = ()
     }
 
     const login = cleanToken ? cleanUsername : `justinfan${Math.floor(10000 + Math.random() * 90000)}`;
-    socket = new WebSocket(TWITCH_IRC_URL);
+    socket = new WebSocketImpl(TWITCH_IRC_URL);
 
     socket.on('open', () => {
       socket.send(`PASS ${cleanToken ? `oauth:${cleanToken}` : 'SCHMOOPIIE'}\r\n`);
@@ -56,7 +56,7 @@ function createTwitchAdapter({ channel, token = '', username = '', onStatus = ()
       socket.send(`JOIN #${cleanChannel}\r\n`);
       status(cleanToken
         ? `Connected to Twitch IRC; joining #${cleanChannel}.`
-        : `Trying anonymous IRC on #${cleanChannel}; Twitch may reject anonymous logins.`);
+        : `Connecting anonymously to Twitch IRC on #${cleanChannel}.`);
     });
 
     socket.on('message', (data) => {
