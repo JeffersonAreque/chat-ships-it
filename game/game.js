@@ -51,7 +51,7 @@
   function drawShip() {
     context.save();
     context.translate(ship.x, ship.y);
-    context.fillStyle = '#22c55e';
+    context.fillStyle = '#67e8f9';
     context.strokeStyle = '#e0fbff';
     context.lineWidth = 2;
     context.beginPath();
@@ -89,50 +89,20 @@
     context.save();
     context.translate(asteroid.x, asteroid.y);
     context.rotate(asteroid.rotation);
-    context.fillStyle = '#ec4899';
-    context.strokeStyle = '#fbcfe8';
+    context.fillStyle = '#75869b';
+    context.strokeStyle = '#cbd5e1';
     context.lineWidth = 2;
     context.beginPath();
-    context.moveTo(-asteroid.radius * 0.72, -asteroid.radius * 0.18);
-    context.lineTo(-asteroid.radius * 0.9, -asteroid.radius * 0.88);
-    context.lineTo(-asteroid.radius * 0.2, -asteroid.radius * 0.62);
-    context.quadraticCurveTo(0, -asteroid.radius * 0.78, asteroid.radius * 0.2, -asteroid.radius * 0.62);
-    context.lineTo(asteroid.radius * 0.9, -asteroid.radius * 0.88);
-    context.lineTo(asteroid.radius * 0.72, -asteroid.radius * 0.18);
-    context.quadraticCurveTo(asteroid.radius, asteroid.radius * 0.9, 0, asteroid.radius);
-    context.quadraticCurveTo(-asteroid.radius, asteroid.radius * 0.9, -asteroid.radius * 0.72, -asteroid.radius * 0.18);
+    for (let point = 0; point < 10; point += 1) {
+      const angle = (point / 10) * Math.PI * 2;
+      const bump = point % 2 === 0 ? 1 : 0.78;
+      const x = Math.cos(angle) * asteroid.radius * bump;
+      const y = Math.sin(angle) * asteroid.radius * bump;
+      if (point === 0) context.moveTo(x, y);
+      else context.lineTo(x, y);
+    }
     context.closePath();
     context.fill();
-    context.stroke();
-
-    context.fillStyle = '#831843';
-    for (const eyeX of [-0.34, 0.34]) {
-      context.beginPath();
-      context.arc(asteroid.radius * eyeX, -asteroid.radius * 0.08, asteroid.radius * 0.075, 0, Math.PI * 2);
-      context.fill();
-    }
-    context.beginPath();
-    context.moveTo(-asteroid.radius * 0.12, asteroid.radius * 0.18);
-    context.lineTo(asteroid.radius * 0.12, asteroid.radius * 0.18);
-    context.lineTo(0, asteroid.radius * 0.31);
-    context.closePath();
-    context.fill();
-
-    context.strokeStyle = '#831843';
-    context.lineWidth = Math.max(1, asteroid.radius * 0.045);
-    context.beginPath();
-    context.moveTo(0, asteroid.radius * 0.3);
-    context.lineTo(0, asteroid.radius * 0.42);
-    context.moveTo(0, asteroid.radius * 0.42);
-    context.lineTo(-asteroid.radius * 0.16, asteroid.radius * 0.5);
-    context.moveTo(0, asteroid.radius * 0.42);
-    context.lineTo(asteroid.radius * 0.16, asteroid.radius * 0.5);
-    for (const side of [-1, 1]) {
-      context.moveTo(side * asteroid.radius * 0.26, asteroid.radius * 0.3);
-      context.lineTo(side * asteroid.radius * 0.78, asteroid.radius * 0.2);
-      context.moveTo(side * asteroid.radius * 0.26, asteroid.radius * 0.4);
-      context.lineTo(side * asteroid.radius * 0.76, asteroid.radius * 0.48);
-    }
     context.stroke();
     context.restore();
   }
