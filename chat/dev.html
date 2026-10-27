@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chat Ships It — Dev Chat</title>
+    <style>
+      :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #0b1220; color: #edf4ff; }
+      * { box-sizing: border-box; }
+      body { max-width: 760px; margin: 0 auto; padding: 28px 18px; }
+      h1 { margin-top: 0; }
+      p, small { color: #a8b7ca; }
+      form { display: grid; grid-template-columns: 1fr 2fr auto; gap: 10px; margin: 22px 0; }
+      label { display: grid; gap: 6px; color: #c4d4e8; font-size: .9rem; }
+      input, button { min-width: 0; padding: 11px 12px; border: 1px solid #33465d; border-radius: 8px; font: inherit; }
+      input { color: #f8fafc; background: #111d2e; }
+      button { align-self: end; color: #041522; background: #67e8f9; border: 0; font-weight: 700; cursor: pointer; }
+      button:disabled { cursor: not-allowed; opacity: .5; }
+      #status { min-height: 1.5em; }
+      #messages { display: grid; gap: 8px; padding: 0; list-style: none; }
+      #messages li { padding: 10px 12px; border-radius: 8px; background: #142238; overflow-wrap: anywhere; }
+      #messages .system { color: #9db4cd; }
+      @media (max-width: 600px) { form { grid-template-columns: 1fr; } button { justify-self: start; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Local chat tester</h1>
+      <p>Send pretend chat messages without opening Twitch. Try <code>!idea Make the ship blue</code>, then <code>!vote 1</code>.</p>
+      <p id="status" role="status">Connecting to the game server…</p>
+      <form id="message-form">
+        <label>Fake username<input id="user" name="user" maxlength="25" value="viewer1" required></label>
+        <label>Chat message<input id="text" name="text" maxlength="500" placeholder="!idea Add a shield" required></label>
+        <button id="send" type="submit" disabled>Send</button>
+      </form>
+      <h2>Recent messages</h2>
+      <ul id="messages" aria-live="polite"></ul>
+    </main>
+    <script src="/chat/dev.js" defer></script>
+  </body>
+</html>
