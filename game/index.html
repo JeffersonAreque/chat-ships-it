@@ -49,6 +49,8 @@
       p { color: #a9bbcf; line-height: 1.5; }
       .help { margin: 12px 0 0; text-align: center; }
       kbd { color: #eff6ff; }
+      #viewer-credits { margin: 12px 0 0; color: #bae6fd; font-size: .85rem; text-align: center; }
+      #viewer-credits ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; margin: 5px 0 0; padding: 0; list-style: none; }
     </style>
   </head>
   <body>
@@ -59,8 +61,13 @@
       </div>
       <canvas id="game" width="960" height="540" aria-label="Dodge asteroids with your ship"></canvas>
       <p class="help">Move with <kbd>← ↑ → ↓</kbd> or <kbd>W A S D</kbd>. After a crash, press <kbd>Space</kbd> to fly again.</p>
+      <section id="viewer-credits" aria-label="Viewer credits" hidden>
+        <strong>Chat crew</strong>
+        <ul id="credit-list"></ul>
+      </section>
     </main>
     <script src="/game/game.js" defer></script>
+    <script src="/game/credits.js" defer></script>
     <script src="/game/reloader.js" defer></script>
   </body>
 </html>

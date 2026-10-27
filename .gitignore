@@ -1,5 +1,7 @@
 node_modules/
 /runtime/workspace/
+/runtime/credits.json
+/runtime/credits.json.*.tmp
 .env
 .env.*
 !.env.example

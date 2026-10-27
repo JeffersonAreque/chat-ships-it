@@ -5,7 +5,8 @@
   "description": "A Twitch chat-driven mini-game for the Codex x TwitchCon Hackathon.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test"
   },
   "dependencies": {
     "dotenv": "^16.4.7",

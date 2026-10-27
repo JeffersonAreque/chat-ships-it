@@ -9,6 +9,7 @@ const { createIdeaStore } = require('./ideas/ideaStore');
 const { createBuildQueue } = require('./ideas/buildQueue');
 const { createDevAdapter } = require('./chat/devAdapter');
 const { createCodexRunner } = require('./builder/codexRunner');
+const { createCreditStore } = require('./credits/creditStore');
 
 const app = express();
 const server = createServer(app);
@@ -23,6 +24,10 @@ const codexMode = String(process.env.CODEX_MODE || 'mock').trim().toLowerCase();
 const bannedWords = String(process.env.BANNED_WORDS || '').split(',').map((word) => word.trim()).filter(Boolean);
 const ideaStore = createIdeaStore({ additionalBannedWords: bannedWords });
 const buildQueue = createBuildQueue();
+const creditStore = createCreditStore({
+  filePath: path.join(__dirname, 'runtime', 'credits.json'),
+  legacyGamePath: path.join(gameDirectory, 'game.js'),
+});
 const adminPassword = String(process.env.ADMIN_PASSWORD || '');
 let latestBuildNotice = null;
 let buildRunner;
@@ -71,6 +76,11 @@ buildRunner = createCodexRunner({
   projectRoot: __dirname,
   onStatus(event) {
     latestBuildNotice = event;
+    if (event.status === 'done' && event.item) {
+      try { creditStore.addBuild(event.item); } catch (error) {
+        console.error('[credits] Could not save the shipped idea credit:', error.message);
+      }
+    }
     broadcastState();
     if (event.status === 'done' || event.status === 'undone') broadcastGameReload();
   },
@@ -128,6 +138,10 @@ app.get('/', (request, response) => {
 
 app.get('/game', (request, response) => {
   response.sendFile(path.join(gameDirectory, 'index.html'));
+});
+app.get('/game/api/credits', (request, response) => {
+  response.set('Cache-Control', 'no-store');
+  response.json({ credits: creditStore.getCredits() });
 });
 
 app.use('/game', express.static(gameDirectory, {
