@@ -1,7 +1,8 @@
 (() => {
   const banner = document.querySelector('#build-banner');
   const toast = document.querySelector('#build-toast');
-  if (!banner || !toast) return;
+  if (!banner) return;
+  const showToast = window.location?.pathname?.startsWith('/overlay');
 
   let activeNotice = null;
   let toastKey = '';
@@ -34,7 +35,7 @@
     if (notice && activeStatuses.includes(notice.status)) {
       activeNotice = notice;
       banner.hidden = false;
-      toast.hidden = true;
+      if (toast) toast.hidden = true;
       toastKey = '';
       if (toastTimer) window.clearTimeout(toastTimer);
       renderActiveNotice();
@@ -43,6 +44,7 @@
 
     activeNotice = null;
     banner.hidden = true;
+    if (!showToast || !toast) return;
     if (!notice || !['done', 'failed'].includes(notice.status)) {
       toast.hidden = true;
       toastKey = '';

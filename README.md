@@ -17,7 +17,7 @@ A Twitch stream mini-game where viewers suggest changes and the streamer chooses
 
 ## Pages
 
-- `/game` — playable canvas game and OBS browser source.
+- `/game` — playable canvas game and OBS browser source. Use `/game?autopilot=1` when OBS should show the ship dodging and restarting without keyboard input.
 - `/overlay` — transparent chat idea board, vote totals, and build updates for OBS.
 - `/admin` — password-protected streamer controls, build queue, errors, undo, and demo reset.
 - `/dev` — local fake-chat tester, available when `CHAT_MODE=dev`.

@@ -10,6 +10,7 @@ test('renders live stages with elapsed time and a shipped or failed toast', () =
     ['#build-toast', { hidden: true, textContent: '' }],
   ]);
   const window = {
+    location: { pathname: '/game' },
     setInterval() { return 1; },
     setTimeout() { return 2; },
     clearTimeout() {},
@@ -39,10 +40,28 @@ test('renders live stages with elapsed time and a shipped or failed toast', () =
 
   notice.render({ buildNotice: { status: 'done', message: 'Shipped! Cat Asteroids by @ana' } });
   assert.equal(banner.hidden, true);
-  assert.equal(toast.hidden, false);
-  assert.equal(toast.textContent, 'Shipped! Cat Asteroids by @ana');
+  assert.equal(toast.hidden, true);
 
   notice.render({ buildNotice: { status: 'failed', message: 'Failed, game unchanged' } });
-  assert.equal(toast.textContent, 'Failed, game unchanged');
+  assert.equal(toast.hidden, true);
+
+  const overlayElements = new Map([
+    ['#build-banner', { hidden: true, textContent: '' }],
+    ['#build-toast', { hidden: true, textContent: '' }],
+  ]);
+  const overlayWindow = {
+    location: { pathname: '/overlay' },
+    setInterval() { return 1; },
+    setTimeout() { return 2; },
+    clearTimeout() {},
+  };
+  const overlayContext = vm.createContext({
+    document: { querySelector: (selector) => overlayElements.get(selector) },
+    window: overlayWindow,
+  });
+  new vm.Script(script).runInContext(overlayContext);
+  overlayWindow.ChatShipsBuildNotice.render({ buildNotice: { status: 'done', message: 'Shipped! Cat Asteroids by @ana' } });
+  assert.equal(overlayElements.get('#build-toast').hidden, false);
+  assert.equal(overlayElements.get('#build-toast').textContent, 'Shipped! Cat Asteroids by @ana');
 });
 

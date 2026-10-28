@@ -53,7 +53,7 @@ const TITLE_ACTION_WORDS = new Set(['add', 'block', 'blocks', 'change', 'create'
 function featureTokens(value) {
   return (String(value || '').normalize('NFKC').toLocaleLowerCase().match(/[\p{L}\p{N}]+/gu) || [])
     .filter((word) => !TITLE_STOP_WORDS.has(word) && !TITLE_ACTION_WORDS.has(word))
-    .map((word) => word.length > 4 && word.endsWith('s') ? word.slice(0, -1) : word);
+    .map((word) => word.length > 3 && word.endsWith('s') && !word.endsWith('ss') ? word.slice(0, -1) : word);
 }
 
 function fallbackFeatureTitle(ideaText) {
@@ -78,9 +78,10 @@ function featureTitleFromOutput(stdout, item, usedTitles = [], onRejected = () =
   }
 
   const ideaTokens = new Set(featureTokens(item?.text));
-  const titleMatches = featureTokens(candidate).filter((word) => ideaTokens.has(word));
-  if (titleMatches.length === 0) {
-    onRejected('title had no meaningful words in common with the viewer idea', candidate);
+  const titleMatches = new Set(featureTokens(candidate).filter((word) => ideaTokens.has(word)));
+  const requiredMatches = Math.min(2, ideaTokens.size);
+  if (ideaTokens.size === 0 || titleMatches.size < requiredMatches) {
+    onRejected(`title shared fewer than ${requiredMatches} meaningful words with the viewer idea`, candidate);
     return fallbackFeatureTitle(item?.text);
   }
   return candidate;

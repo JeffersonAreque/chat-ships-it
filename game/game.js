@@ -5,6 +5,7 @@
 
   const width = canvas.width;
   const height = canvas.height;
+  const autopilot = /(?:^|[?&])autopilot=1(?:&|$)/.test(window.location?.search || '');
   const keys = new Set();
   const stars = Array.from({ length: 90 }, () => ({
     x: Math.random() * width,
@@ -19,6 +20,7 @@
   let spawnTimer;
   let lastFrame;
   let gameOver;
+  let gameOverAt;
 
   function startGame() {
     ship = { x: width / 2, y: height - 75, radius: 17, speed: 290 };
@@ -27,8 +29,34 @@
     spawnTimer = 0;
     lastFrame = 0;
     gameOver = false;
+    gameOverAt = null;
     scoreLabel.textContent = '0';
-    requestAnimationFrame(frame);
+  }
+
+  function findAutopilotTargetX() {
+    const candidates = [ship.x];
+    for (let x = ship.radius; x <= width - ship.radius; x += 20) candidates.push(x);
+
+    let bestX = ship.x;
+    let bestRisk = Infinity;
+    for (const candidate of candidates) {
+      let risk = 0;
+      for (const asteroid of asteroids) {
+        const timeToShip = (ship.y - asteroid.y) / asteroid.speed;
+        if (timeToShip < -0.1 || timeToShip > 2.2) continue;
+        const dangerRadius = ship.radius + asteroid.radius * 0.82 + 18;
+        const horizontalClearance = Math.abs(candidate - asteroid.x);
+        if (horizontalClearance < dangerRadius) {
+          const urgency = (2.2 - Math.max(0, timeToShip)) / 2.2;
+          risk += (dangerRadius - horizontalClearance) * urgency;
+        }
+      }
+      if (risk < bestRisk || (risk === bestRisk && Math.abs(candidate - ship.x) < Math.abs(bestX - ship.x))) {
+        bestRisk = risk;
+        bestX = candidate;
+      }
+    }
+    return bestX;
   }
 
   function drawBackground(delta) {
@@ -134,8 +162,11 @@
     drawBackground(delta);
 
     if (!gameOver) {
-      const horizontal = Number(keys.has('ArrowRight') || keys.has('d')) - Number(keys.has('ArrowLeft') || keys.has('a'));
-      const vertical = Number(keys.has('ArrowDown') || keys.has('s')) - Number(keys.has('ArrowUp') || keys.has('w'));
+      const targetX = autopilot ? findAutopilotTargetX() : ship.x;
+      const horizontal = autopilot
+        ? Math.sign(targetX - ship.x)
+        : Number(keys.has('ArrowRight') || keys.has('d')) - Number(keys.has('ArrowLeft') || keys.has('a'));
+      const vertical = autopilot ? 0 : Number(keys.has('ArrowDown') || keys.has('s')) - Number(keys.has('ArrowUp') || keys.has('w'));
       const diagonalScale = horizontal && vertical ? Math.SQRT1_2 : 1;
       ship.x = Math.max(ship.radius, Math.min(width - ship.radius, ship.x + horizontal * ship.speed * delta * diagonalScale));
       ship.y = Math.max(ship.radius + 8, Math.min(height - ship.radius, ship.y + vertical * ship.speed * delta * diagonalScale));
@@ -149,7 +180,10 @@
       for (const asteroid of asteroids) {
         asteroid.y += asteroid.speed * delta;
         drawAsteroid(asteroid);
-        if (collides(asteroid)) gameOver = true;
+        if (collides(asteroid)) {
+          gameOver = true;
+          gameOverAt = timestamp;
+        }
       }
       asteroids = asteroids.filter((asteroid) => asteroid.y < height + asteroid.radius);
 
@@ -160,6 +194,7 @@
       for (const asteroid of asteroids) drawAsteroid(asteroid);
       drawShip();
       drawGameOver();
+      if (autopilot && timestamp - gameOverAt >= 1000) startGame();
     }
 
     requestAnimationFrame(frame);
@@ -178,4 +213,5 @@
   });
 
   startGame();
+  requestAnimationFrame(frame);
 })();

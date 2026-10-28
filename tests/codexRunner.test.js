@@ -50,10 +50,12 @@ test('uses Codex feature titles with a safe two-word fallback', () => {
   const item = { text: 'make the asteroids cats' };
   assert.equal(featureTitleFromOutput('Finished.\nFEATURE_TITLE: Cat Asteroids\n', item), 'Cat Asteroids');
   assert.equal(featureTitleFromOutput('FEATURE_TITLE: Rainbow Trail', { text: 'make the ship leave a rainbow trail' }), 'Rainbow Trail');
-  assert.equal(featureTitleFromOutput('FEATURE_TITLE: Cat', item), 'Asteroid Cats');
+  assert.equal(featureTitleFromOutput('FEATURE_TITLE: Cat Asteroids', { text: 'make the asteroids glow neon green' }), 'Asteroid Glow Neon');
+  assert.equal(featureTitleFromOutput('FEATURE_TITLE: Cat', item), 'Asteroid Cat');
   assert.equal(featureTitleFromOutput('FEATURE_TITLE: Cat Asteroids', { text: 'add a shield that blocks one hit' }), 'Shield One Hit');
   assert.equal(featureTitleFromOutput('FEATURE_TITLE: Cat Asteroids', { text: 'add a shield that blocks one hit' }, ['Cat Asteroids']), 'Shield One Hit');
   assert.equal(fallbackFeatureTitle('make the ship leave a rainbow trail'), 'Ship Rainbow Trail');
+  assert.equal(fallbackFeatureTitle('make the asteroids glow neon green'), 'Asteroid Glow Neon');
   const rejected = [];
   featureTitleFromOutput('', item, [], (reason) => rejected.push(reason));
   assert.match(rejected[0], /no FEATURE_TITLE/);
