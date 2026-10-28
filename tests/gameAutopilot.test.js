@@ -53,4 +53,5 @@ test('the overlay panel is positioned at the top right', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'overlay', 'index.html'), 'utf8');
   assert.match(html, /body\s*\{[^}]*display:\s*flex;[^}]*justify-content:\s*flex-end/s);
   assert.match(html, /main\s*\{[^}]*margin-left:\s*auto/s);
+  assert.match(html, /main\s*\{[^}]*margin-top:\s*88px/s);
 });
