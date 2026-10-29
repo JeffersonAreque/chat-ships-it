@@ -1,6 +1,6 @@
 # Chat Ships It
 
-A Twitch stream mini-game where viewers suggest changes and the streamer chooses which idea Codex builds.
+A Twitch stream mini-game where viewers suggest changes and the streamer chooses which idea Codex builds, starting from a blank game canvas.
 
 **Preview:** Add a screenshot or short GIF of the game and stream overlay here.
 
@@ -17,7 +17,7 @@ A Twitch stream mini-game where viewers suggest changes and the streamer chooses
 
 ## Pages
 
-- `/game` — playable canvas game and OBS browser source. Use `/game?autopilot=1` when OBS should show the ship dodging and restarting without keyboard input.
+- `/game` — blank neon starfield canvas and OBS browser source. Use `/game?autopilot=1` for feature scenes; Codex is instructed to support the exposed autopilot flag when appropriate.
 - `/overlay` — transparent chat idea board, vote totals, and build updates for OBS.
 - `/admin` — password-protected streamer controls, build queue, errors, undo, and demo reset.
 - `/dev` — local fake-chat tester, available when `CHAT_MODE=dev`.
@@ -67,7 +67,8 @@ All settings are listed in `.env.example`:
 - `chat/` contains the shared chat adapter implementations and local tester.
 - `ideas/` handles submissions, votes, moderation, and the in-memory build queue.
 - `builder/` runs Codex in the sandbox and validates game changes.
-- `game/game.js` is the canvas game code; it is the only file the runtime AI builder may edit.
+- `game/game.js` starts as a blank scene with an animated starfield and stable engine helpers for input, neon sprites, particles, sound, collisions, and screen shake; it is the only file the runtime AI builder may edit.
+- `game/ENGINE_API.md` is included in each Codex prompt and documents the helpers that generated features should call.
 - `credits/` stores viewer credits outside the game code; runtime data is kept under ignored `runtime/`.
 - `overlay/` and `admin/` contain the OBS overlay and streamer panel.
 

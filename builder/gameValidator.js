@@ -19,7 +19,21 @@ function createCanvasContext(renderedText) {
   });
 }
 
-function validateGameSource(source, { frames = 350, timeoutMs = 3000 } = {}) {
+const ENGINE_START = '// CHAT_SHIPS_ENGINE_START';
+const ENGINE_END = '// CHAT_SHIPS_ENGINE_END';
+
+function getEngineSection(source) {
+  const start = source.indexOf(ENGINE_START);
+  const end = source.indexOf(ENGINE_END, start + ENGINE_START.length);
+  if (start < 0 || end < 0) throw new Error('The game must preserve its protected engine section.');
+  return source.slice(start, end + ENGINE_END.length);
+}
+
+function validateGameSource(source, { frames = 350, timeoutMs = 3000, engineBaseline } = {}) {
+  const candidateEngine = getEngineSection(source);
+  if (engineBaseline !== undefined && candidateEngine !== getEngineSection(engineBaseline)) {
+    throw new Error('The candidate changed the protected engine section.');
+  }
   const renderedText = [];
   const frameQueue = [];
   const listeners = new Map();
@@ -73,4 +87,4 @@ function validateGameSource(source, { frames = 350, timeoutMs = 3000 } = {}) {
   return { frames, renderedText };
 }
 
-module.exports = { validateGameSource };
+module.exports = { validateGameSource, getEngineSection };

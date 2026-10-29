@@ -2,216 +2,333 @@
   const canvas = document.querySelector('#game');
   const context = canvas.getContext('2d');
   const scoreLabel = document.querySelector('#score');
-
   const width = canvas.width;
   const height = canvas.height;
   const autopilot = /(?:^|[?&])autopilot=1(?:&|$)/.test(window.location?.search || '');
-  const keys = new Set();
-  const stars = Array.from({ length: 90 }, () => ({
-    x: Math.random() * width,
-    y: Math.random() * height,
-    size: Math.random() * 2 + 0.5,
-    speed: Math.random() * 25 + 12,
-  }));
 
-  let ship;
-  let asteroids;
-  let score;
-  let spawnTimer;
-  let lastFrame;
-  let gameOver;
-  let gameOverAt;
-
-  function startGame() {
-    ship = { x: width / 2, y: height - 75, radius: 17, speed: 290 };
-    asteroids = [];
-    score = 0;
-    spawnTimer = 0;
-    lastFrame = 0;
-    gameOver = false;
-    gameOverAt = null;
-    scoreLabel.textContent = '0';
-  }
-
-  function findAutopilotTargetX() {
-    const candidates = [ship.x];
-    for (let x = ship.radius; x <= width - ship.radius; x += 20) candidates.push(x);
-
-    let bestX = ship.x;
-    let bestRisk = Infinity;
-    for (const candidate of candidates) {
-      let risk = 0;
-      for (const asteroid of asteroids) {
-        const timeToShip = (ship.y - asteroid.y) / asteroid.speed;
-        if (timeToShip < -0.1 || timeToShip > 2.2) continue;
-        const dangerRadius = ship.radius + asteroid.radius * 0.82 + 18;
-        const horizontalClearance = Math.abs(candidate - asteroid.x);
-        if (horizontalClearance < dangerRadius) {
-          const urgency = (2.2 - Math.max(0, timeToShip)) / 2.2;
-          risk += (dangerRadius - horizontalClearance) * urgency;
-        }
-      }
-      if (risk < bestRisk || (risk === bestRisk && Math.abs(candidate - ship.x) < Math.abs(bestX - ship.x))) {
-        bestRisk = risk;
-        bestX = candidate;
-      }
-    }
-    return bestX;
-  }
-
-  function drawBackground(delta) {
-    context.fillStyle = '#081827';
-    context.fillRect(0, 0, width, height);
-
-    context.fillStyle = '#c6e5ff';
-    for (const star of stars) {
-      star.y += star.speed * delta;
-      if (star.y > height) {
-        star.y = 0;
-        star.x = Math.random() * width;
-      }
-      context.globalAlpha = 0.35 + star.size / 4;
-      context.fillRect(star.x, star.y, star.size, star.size);
-    }
-    context.globalAlpha = 1;
-  }
-
-  function drawShip() {
-    context.save();
-    context.translate(ship.x, ship.y);
-    context.fillStyle = '#67e8f9';
-    context.strokeStyle = '#e0fbff';
-    context.lineWidth = 2;
-    context.beginPath();
-    context.moveTo(0, -21);
-    context.lineTo(15, 17);
-    context.lineTo(0, 10);
-    context.lineTo(-15, 17);
-    context.closePath();
-    context.fill();
-    context.stroke();
-
-    context.fillStyle = '#fb923c';
-    context.beginPath();
-    context.moveTo(-6, 17);
-    context.lineTo(0, 28 + Math.random() * 8);
-    context.lineTo(6, 17);
-    context.fill();
-    context.restore();
-  }
-
-  function spawnAsteroid() {
-    const radius = 15 + Math.random() * 22;
-    asteroids.push({
-      x: radius + Math.random() * (width - radius * 2),
-      y: -radius,
-      radius,
-      speed: 120 + Math.random() * 100 + Math.min(score, 800) * 0.12,
-      rotation: Math.random() * Math.PI,
-      spin: (Math.random() - 0.5) * 1.5,
+  // CHAT_SHIPS_ENGINE_START
+  const Engine = (() => {
+    const palette = Object.freeze({
+      background: '#050814',
+      cyan: '#67e8f9',
+      violet: '#a78bfa',
+      pink: '#fb7185',
+      lime: '#a3e635',
+      white: '#f8fafc',
     });
-  }
+    const keys = new Set();
+    const pressed = new Set();
+    const stars = Array.from({ length: 110 }, () => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      size: Math.random() * 1.8 + 0.5,
+      speed: Math.random() * 23 + 8,
+      phase: Math.random() * Math.PI * 2,
+    }));
+    const particles = [];
+    let scene = { update() {}, draw() {} };
+    let lastFrame = 0;
+    let elapsed = 0;
+    let shakeTime = 0;
+    let shakePower = 0;
+    let pointer = { x: width / 2, y: height / 2, down: false };
+    let audio = null;
 
-  function drawAsteroid(asteroid) {
-    asteroid.rotation += asteroid.spin * (1 / 60);
-    context.save();
-    context.translate(asteroid.x, asteroid.y);
-    context.rotate(asteroid.rotation);
-    context.fillStyle = '#315b45';
-    context.strokeStyle = '#39ff14';
-    context.lineWidth = 2;
-    context.shadowColor = '#39ff14';
-    context.shadowBlur = 16;
-    context.beginPath();
-    for (let point = 0; point < 10; point += 1) {
-      const angle = (point / 10) * Math.PI * 2;
-      const bump = point % 2 === 0 ? 1 : 0.78;
-      const x = Math.cos(angle) * asteroid.radius * bump;
-      const y = Math.sin(angle) * asteroid.radius * bump;
-      if (point === 0) context.moveTo(x, y);
-      else context.lineTo(x, y);
+    function normalizeKey(key) {
+      return key.length === 1 ? key.toLowerCase() : key;
     }
-    context.closePath();
-    context.fill();
-    context.stroke();
-    context.restore();
-  }
 
-  function collides(asteroid) {
-    const dx = ship.x - asteroid.x;
-    const dy = ship.y - asteroid.y;
-    const safeDistance = ship.radius + asteroid.radius * 0.82;
-    return dx * dx + dy * dy < safeDistance * safeDistance;
-  }
+    function unlockAudio() {
+      const AudioContextType = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextType) return;
+      if (!audio) audio = new AudioContextType();
+      if (audio.state === 'suspended') audio.resume().catch(() => {});
+    }
 
-  function drawGameOver() {
-    context.fillStyle = '#020617bb';
-    context.fillRect(0, 0, width, height);
-    context.textAlign = 'center';
-    context.fillStyle = '#f8fafc';
-    context.font = 'bold 48px system-ui, sans-serif';
-    context.fillText('Ship down!', width / 2, height / 2 - 14);
-    context.fillStyle = '#bae6fd';
-    context.font = '22px system-ui, sans-serif';
-    context.fillText(`Score: ${Math.floor(score)}  ·  Press Space to restart`, width / 2, height / 2 + 30);
-  }
+    function playSound(kind = 'spawn') {
+      unlockAudio();
+      if (!audio || audio.state !== 'running') return;
+      const notes = { spawn: [540, 760], hit: [180, 90], collect: [660, 990], win: [520, 780] };
+      const [startFrequency, endFrequency] = notes[kind] || notes.spawn;
+      const oscillator = audio.createOscillator();
+      const gain = audio.createGain();
+      const now = audio.currentTime;
+      oscillator.type = kind === 'hit' ? 'sawtooth' : 'sine';
+      oscillator.frequency.setValueAtTime(startFrequency, now);
+      oscillator.frequency.exponentialRampToValueAtTime(endFrequency, now + 0.12);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.08, now + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+      oscillator.connect(gain);
+      gain.connect(audio.destination);
+      oscillator.start(now);
+      oscillator.stop(now + 0.17);
+    }
 
-  function frame(timestamp) {
-    const delta = lastFrame ? Math.min((timestamp - lastFrame) / 1000, 0.04) : 0;
-    lastFrame = timestamp;
-    drawBackground(delta);
-
-    if (!gameOver) {
-      const targetX = autopilot ? findAutopilotTargetX() : ship.x;
-      const horizontal = autopilot
-        ? Math.sign(targetX - ship.x)
-        : Number(keys.has('ArrowRight') || keys.has('d')) - Number(keys.has('ArrowLeft') || keys.has('a'));
-      const vertical = autopilot ? 0 : Number(keys.has('ArrowDown') || keys.has('s')) - Number(keys.has('ArrowUp') || keys.has('w'));
-      const diagonalScale = horizontal && vertical ? Math.SQRT1_2 : 1;
-      ship.x = Math.max(ship.radius, Math.min(width - ship.radius, ship.x + horizontal * ship.speed * delta * diagonalScale));
-      ship.y = Math.max(ship.radius + 8, Math.min(height - ship.radius, ship.y + vertical * ship.speed * delta * diagonalScale));
-
-      spawnTimer += delta;
-      if (spawnTimer >= Math.max(0.34, 0.9 - score / 1800)) {
-        spawnAsteroid();
-        spawnTimer = 0;
+    function burst(x, y, color = palette.cyan, count = 18) {
+      for (let index = 0; index < count; index += 1) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 35 + Math.random() * 180;
+        const life = 0.25 + Math.random() * 0.55;
+        particles.push({
+          x, y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life,
+          maxLife: life,
+          size: 1.5 + Math.random() * 3,
+          color,
+        });
       }
+    }
 
-      for (const asteroid of asteroids) {
-        asteroid.y += asteroid.speed * delta;
-        drawAsteroid(asteroid);
-        if (collides(asteroid)) {
-          gameOver = true;
-          gameOverAt = timestamp;
+    function updateParticles(delta) {
+      for (const particle of particles) {
+        particle.life -= delta;
+        particle.x += particle.vx * delta;
+        particle.y += particle.vy * delta;
+        particle.vx *= 1 - delta * 1.4;
+        particle.vy *= 1 - delta * 1.4;
+      }
+      for (let index = particles.length - 1; index >= 0; index -= 1) {
+        if (particles[index].life <= 0) particles.splice(index, 1);
+      }
+    }
+
+    function drawParticles() {
+      for (const particle of particles) {
+        context.save();
+        context.globalAlpha = Math.max(0, particle.life / particle.maxLife);
+        context.fillStyle = particle.color;
+        context.shadowColor = particle.color;
+        context.shadowBlur = 14;
+        context.beginPath();
+        context.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        context.fill();
+        context.restore();
+      }
+    }
+
+    function drawStarfield(delta) {
+      context.fillStyle = palette.background;
+      context.fillRect(0, 0, width, height);
+      for (const star of stars) {
+        star.y += star.speed * delta;
+        star.phase += delta * 2;
+        if (star.y > height) {
+          star.y = -star.size;
+          star.x = Math.random() * width;
+        }
+        context.globalAlpha = 0.3 + (Math.sin(star.phase) + 1) * 0.24;
+        context.fillStyle = star.size > 1.8 ? palette.cyan : palette.white;
+        context.shadowColor = palette.cyan;
+        context.shadowBlur = star.size > 1.8 ? 8 : 0;
+        context.fillRect(star.x, star.y, star.size, star.size);
+      }
+      context.globalAlpha = 1;
+      context.shadowBlur = 0;
+    }
+
+    function frame(timestamp) {
+      const delta = lastFrame ? Math.min((timestamp - lastFrame) / 1000, 0.04) : 0;
+      lastFrame = timestamp;
+      elapsed += delta;
+      updateParticles(delta);
+      for (const star of stars) {
+        star.y += star.speed * delta;
+        star.phase += delta * 2;
+        if (star.y > height) {
+          star.y = -star.size;
+          star.x = Math.random() * width;
         }
       }
-      asteroids = asteroids.filter((asteroid) => asteroid.y < height + asteroid.radius);
 
-      score += delta * 10;
-      scoreLabel.textContent = String(Math.floor(score));
-      drawShip();
-    } else {
-      for (const asteroid of asteroids) drawAsteroid(asteroid);
-      drawShip();
-      drawGameOver();
-      if (autopilot && timestamp - gameOverAt >= 1000) startGame();
+      scene.update(delta, elapsed, Engine);
+      drawStarfield(0);
+      const shake = shakeTime > 0 ? shakePower * (shakeTime / 0.24) : 0;
+      context.save();
+      if (shake > 0) context.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+      scene.draw(Engine);
+      drawParticles();
+      context.restore();
+      shakeTime = Math.max(0, shakeTime - delta);
+      if (shakeTime === 0) shakePower = 0;
+      pressed.clear();
+      requestAnimationFrame(frame);
     }
 
-    requestAnimationFrame(frame);
-  }
+    function setPointer(event, down = pointer.down) {
+      const rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { left: 0, top: 0, width, height };
+      pointer = {
+        x: (event.clientX - rect.left) * (width / (rect.width || width)),
+        y: (event.clientY - rect.top) * (height / (rect.height || height)),
+        down,
+      };
+    }
 
-  window.addEventListener('keydown', (event) => {
-    const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(key)) event.preventDefault();
-    if (key === ' ' && gameOver) startGame();
-    keys.add(key);
-  });
+    window.addEventListener('keydown', (event) => {
+      const key = normalizeKey(event.key);
+      if (!keys.has(key)) pressed.add(key);
+      keys.add(key);
+      unlockAudio();
+    });
+    window.addEventListener('keyup', (event) => keys.delete(normalizeKey(event.key)));
+    window.addEventListener('pointermove', (event) => setPointer(event));
+    window.addEventListener('pointerdown', (event) => { setPointer(event, true); unlockAudio(); });
+    window.addEventListener('pointerup', (event) => setPointer(event, false));
 
-  window.addEventListener('keyup', (event) => {
-    const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
-    keys.delete(key);
-  });
+    const EngineApi = {
+      width,
+      height,
+      palette,
+      input: {
+        isAutopilot: autopilot,
+        isDown: (key) => keys.has(normalizeKey(key)),
+        wasPressed: (key) => pressed.has(normalizeKey(key)),
+        pointer: () => ({ ...pointer }),
+      },
+      draw: {
+        circle(x, y, radius, color = palette.cyan, fill = true) {
+          context.save();
+          context.fillStyle = color;
+          context.strokeStyle = color;
+          context.shadowColor = color;
+          context.shadowBlur = 16;
+          context.beginPath();
+          context.arc(x, y, radius, 0, Math.PI * 2);
+          if (fill) context.fill();
+          else context.stroke();
+          context.restore();
+        },
+        rect(x, y, rectWidth, rectHeight, color = palette.cyan, fill = true) {
+          context.save();
+          context.fillStyle = color;
+          context.strokeStyle = color;
+          context.shadowColor = color;
+          context.shadowBlur = 14;
+          if (fill) context.fillRect(x, y, rectWidth, rectHeight);
+          else context.strokeRect(x, y, rectWidth, rectHeight);
+          context.restore();
+        },
+        line(x1, y1, x2, y2, color = palette.cyan, lineWidth = 2) {
+          context.save();
+          context.strokeStyle = color;
+          context.lineWidth = lineWidth;
+          context.shadowColor = color;
+          context.shadowBlur = 12;
+          context.beginPath();
+          context.moveTo(x1, y1);
+          context.lineTo(x2, y2);
+          context.stroke();
+          context.restore();
+        },
+        text(value, x, y, color = palette.white, size = 22, align = 'center') {
+          context.save();
+          context.fillStyle = color;
+          context.font = `700 ${size}px system-ui, sans-serif`;
+          context.textAlign = align;
+          context.shadowColor = color;
+          context.shadowBlur = 12;
+          context.fillText(String(value), x, y);
+          context.restore();
+        },
+      },
+      sprites: {
+        ship(x, y, size = 22, color = palette.cyan) {
+          context.save();
+          context.translate(x, y);
+          context.fillStyle = color;
+          context.strokeStyle = palette.white;
+          context.lineWidth = 2;
+          context.shadowColor = color;
+          context.shadowBlur = 18;
+          context.beginPath();
+          context.moveTo(0, -size);
+          context.lineTo(size * 0.72, size * 0.72);
+          context.lineTo(0, size * 0.38);
+          context.lineTo(-size * 0.72, size * 0.72);
+          context.closePath();
+          context.fill();
+          context.stroke();
+          context.restore();
+        },
+        orb(x, y, radius = 14, color = palette.pink) {
+          EngineApi.draw.circle(x, y, radius, color);
+          EngineApi.draw.circle(x - radius * 0.25, y - radius * 0.25, radius * 0.28, palette.white);
+        },
+        asteroid(x, y, radius = 20, color = palette.violet, rotation = 0) {
+          context.save();
+          context.translate(x, y);
+          context.rotate(rotation);
+          context.fillStyle = color;
+          context.strokeStyle = palette.white;
+          context.lineWidth = 2;
+          context.shadowColor = color;
+          context.shadowBlur = 15;
+          context.beginPath();
+          for (let point = 0; point < 10; point += 1) {
+            const angle = (point / 10) * Math.PI * 2;
+            const bump = point % 2 === 0 ? 1 : 0.78;
+            const px = Math.cos(angle) * radius * bump;
+            const py = Math.sin(angle) * radius * bump;
+            if (point === 0) context.moveTo(px, py);
+            else context.lineTo(px, py);
+          }
+          context.closePath();
+          context.fill();
+          context.stroke();
+          context.restore();
+        },
+      },
+      particles: {
+        burst,
+        update: updateParticles,
+        draw: drawParticles,
+      },
+      effects: {
+        shake(power = 7, duration = 0.24) {
+          shakePower = Math.max(shakePower, power);
+          shakeTime = Math.max(shakeTime, duration);
+        },
+        spawn(x, y, color = palette.cyan) {
+          burst(x, y, color, 12);
+          playSound('spawn');
+        },
+        hit(x, y, color = palette.pink) {
+          burst(x, y, color, 26);
+          EngineApi.effects.shake(10, 0.3);
+          playSound('hit');
+        },
+      },
+      sound: { play: playSound },
+      collisions: {
+        circles(first, second) {
+          const dx = first.x - second.x;
+          const dy = first.y - second.y;
+          const radius = (first.radius || 0) + (second.radius || 0);
+          return dx * dx + dy * dy <= radius * radius;
+        },
+        pointInRect(point, rect) {
+          return point.x >= rect.x && point.x <= rect.x + rect.width
+            && point.y >= rect.y && point.y <= rect.y + rect.height;
+        },
+      },
+      start(nextScene) {
+        scene = nextScene || { update() {}, draw() {} };
+        lastFrame = 0;
+        if (scoreLabel) scoreLabel.textContent = '0';
+        requestAnimationFrame(frame);
+      },
+    };
+    return EngineApi;
+  })();
+  // CHAT_SHIPS_ENGINE_END
 
-  startGame();
-  requestAnimationFrame(frame);
+  // CHAT_SHIPS_FEATURE_START
+  const feature = {
+    update() {},
+    draw() {},
+  };
+  Engine.start(feature);
+  // CHAT_SHIPS_FEATURE_END
 })();
