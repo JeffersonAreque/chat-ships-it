@@ -3,34 +3,70 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Chat Ships It — Live Ideas</title>
+    <title>Chat Ships It — Stream Overlay</title>
     <style>
       :root { color-scheme: dark; font-family: system-ui, sans-serif; background: transparent; color: #f8fafc; }
       * { box-sizing: border-box; }
       html, body { min-height: 100%; margin: 0; background: transparent; }
       body { display: flex; justify-content: flex-end; align-items: flex-start; padding: 18px; }
-      main { width: min(100%, 520px); margin-top: 88px; margin-left: auto; padding: 16px; border: 1px solid #7dd3fc55; border-radius: 14px; background: #07111fe8; box-shadow: 0 10px 35px #0007; }
+      main { width: min(100%, 560px); margin-top: 88px; margin-left: auto; padding: 16px; border: 1px solid #7dd3fc55; border-radius: 14px; background: #07111fe8; box-shadow: 0 10px 35px #0007; }
       h1 { margin: 0 0 12px; color: #a5f3fc; font-size: 1.25rem; }
       #approved { margin: 0 0 12px; padding: 9px 10px; border-left: 3px solid #4ade80; border-radius: 5px; color: #dcfce7; background: #14532d99; }
       #build-banner { margin: 0 0 12px; padding: 9px 10px; border: 1px solid #38bdf8aa; border-radius: 8px; color: #e0f2fe; background: #082f49ee; font-size: .9rem; font-weight: 650; }
       #build-toast { position: fixed; z-index: 5; top: 18px; left: 50%; width: max-content; max-width: calc(100vw - 32px); transform: translateX(-50%); padding: 12px 18px; border: 1px solid #4ade80aa; border-radius: 10px; color: #dcfce7; background: #14532dee; box-shadow: 0 12px 36px #0008; font-weight: 750; text-align: center; }
+      .tabs { display: flex; gap: 6px; margin: 0 0 12px; border-bottom: 1px solid #30445b; }
+      .tab { padding: 8px 11px; border: 0; border-radius: 8px 8px 0 0; color: #b6c8db; background: transparent; font: inherit; cursor: pointer; }
+      .tab[aria-selected="true"] { color: #06121d; background: #67e8f9; font-weight: 750; }
+      [role="tabpanel"][hidden] { display: none; }
       ol { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-      li { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding: 10px; border-radius: 9px; background: #16263b; }
+      li.idea { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding: 10px; border-radius: 9px; background: #16263b; }
       .number { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 50%; color: #06202a; background: #67e8f9; font-weight: 800; }
       .idea-copy { min-width: 0; }
       .idea-text { display: block; overflow-wrap: anywhere; font-weight: 650; }
       .author { display: block; margin-top: 3px; color: #a9bbcf; font-size: .82rem; }
       .votes { color: #bae6fd; white-space: nowrap; font-variant-numeric: tabular-nums; }
-      #empty { margin: 0; color: #a9bbcf; }
+      #empty, .muted { margin: 0; color: #a9bbcf; }
+      #live-code { max-height: min(52vh, 560px); overflow: auto; margin: 0; padding: 12px; border: 1px solid #26384d; border-radius: 9px; color: #d7e6f7; background: #030811; font: 12px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+      .timeline-layout { display: grid; grid-template-columns: minmax(130px, .8fr) minmax(0, 1.2fr); gap: 10px; }
+      #timeline { display: grid; align-content: start; gap: 6px; max-height: 52vh; overflow: auto; margin: 0; padding: 0; list-style: none; }
+      .timeline-step { display: grid; width: 100%; padding: 8px; border: 1px solid #26384d; border-radius: 8px; color: #d9e7f5; background: #101d2c; text-align: left; cursor: pointer; }
+      .timeline-step[aria-current="step"] { border-color: #67e8f9; background: #123047; }
+      .step-title { font-weight: 750; }
+      .step-meta { margin-top: 3px; color: #a9bbcf; font-size: .77rem; }
+      .replay-controls { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
+      .replay-controls button { padding: 5px 9px; border: 1px solid #42617d; border-radius: 7px; color: #e0f2fe; background: #13273b; cursor: pointer; }
+      #replay-frame { width: 100%; aspect-ratio: 16 / 9; border: 1px solid #42617d; border-radius: 8px; background: #050814; }
+      @media (max-width: 520px) { .timeline-layout { grid-template-columns: 1fr; } #timeline { max-height: 20vh; } }
     </style>
   </head>
   <body>
     <main aria-live="polite">
-      <h1>Chat’s ship ideas</h1>
+      <h1>Chat’s game in progress</h1>
       <p id="approved" hidden></p>
       <p id="build-banner" role="status" aria-live="polite" hidden></p>
-      <p id="empty">Waiting for the first !idea…</p>
-      <ol id="ideas"></ol>
+      <nav class="tabs" role="tablist" aria-label="Overlay panels">
+        <button class="tab" id="ideas-tab" role="tab" aria-selected="true" aria-controls="ideas-panel">Ideas</button>
+        <button class="tab" id="code-tab" role="tab" aria-selected="false" aria-controls="code-panel">Live Code</button>
+        <button class="tab" id="timeline-tab" role="tab" aria-selected="false" aria-controls="timeline-panel">Timeline</button>
+      </nav>
+      <section id="ideas-panel" role="tabpanel" aria-labelledby="ideas-tab">
+        <p id="empty">Waiting for the first !idea…</p>
+        <ol id="ideas"></ol>
+      </section>
+      <section id="code-panel" role="tabpanel" aria-labelledby="code-tab" hidden>
+        <p id="code-label" class="muted">Waiting for Codex to start writing…</p>
+        <pre id="live-code">The game.js diff will appear here during a build.</pre>
+      </section>
+      <section id="timeline-panel" role="tabpanel" aria-labelledby="timeline-tab" hidden>
+        <p id="timeline-empty" class="muted">Shipped features will appear here after Reset demo.</p>
+        <div class="timeline-layout">
+          <ol id="timeline"></ol>
+          <div>
+            <div class="replay-controls"><button id="replay-prev" type="button">← Previous</button><span id="replay-position" class="muted">0 / 0</span><button id="replay-next" type="button">Next →</button></div>
+            <iframe id="replay-frame" title="Replay game snapshot" hidden></iframe>
+          </div>
+        </div>
+      </section>
     </main>
     <p id="build-toast" role="status" aria-live="polite" hidden></p>
     <script src="/game/buildNotice.js" defer></script>

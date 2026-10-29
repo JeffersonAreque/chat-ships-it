@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chat Ships It Replay</title>
+    <style>
+      html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #050814; }
+      canvas { display: block; width: 100%; height: 100%; }
+      #score { display: none; }
+      #message { position: fixed; inset: 0; display: grid; place-items: center; color: #e0f2fe; font: 600 14px system-ui, sans-serif; }
+      #message:empty { display: none; }
+    </style>
+  </head>
+  <body>
+    <canvas id="game" width="960" height="540" aria-label="Replay game snapshot"></canvas>
+    <span id="score">0</span>
+    <div id="message" role="status"></div>
+    <script src="/game/replay.js" defer></script>
+  </body>
+</html>

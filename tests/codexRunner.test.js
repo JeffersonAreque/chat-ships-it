@@ -188,6 +188,32 @@ test('marks the build failed after its single retry and leaves the old game unto
   assert.equal(await fs.readFile(path.join(root, 'game', 'game.js'), 'utf8'), original);
 });
 
+test('streams changed workspace code as a live diff while Codex is building', async (t) => {
+  const root = await makeProject(t);
+  const queue = createBuildQueue();
+  enqueueIdea(queue);
+  const diffs = [];
+  const runner = createCodexRunner({
+    buildQueue: queue,
+    mode: 'real',
+    projectRoot: root,
+    timeoutMs: 5000,
+    onDiff: (event) => diffs.push(event),
+    codexExecutor: async (_prompt, workspace) => {
+      const original = await fs.readFile(path.join(workspace, 'game.js'), 'utf8');
+      const candidate = withFeatureDraw(original, "Engine.draw.text('Drafting', width / 2, height / 2);");
+      await fs.writeFile(path.join(workspace, 'game.js'), candidate, 'utf8');
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      return { stdout: 'FEATURE_TITLE: Cat Asteroids' };
+    },
+  });
+
+  await runner.processQueue();
+
+  assert.ok(diffs.some((event) => event.item.author === 'TestViewer' && event.diff.includes('+    draw() { Engine.draw.text')));
+  assert.equal(queue.getItems()[0].status, 'done');
+});
+
 test('resetDemo restores the configured starter game commit and disables undo', async (t) => {
   const root = await makeProject(t);
   const starterCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();

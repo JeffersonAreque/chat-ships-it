@@ -13,12 +13,13 @@ A Twitch stream mini-game where viewers suggest changes and the streamer chooses
 5. The server validates the candidate JavaScript and runs it for 350 frames with a fake canvas before applying it.
 6. A validation failure gets one retry with the validator message. If the retry fails, the existing game stays in place.
 7. A passing `game/game.js` is committed to Git. The game hot-reloads and shows a shipped toast and viewer credit.
-8. The streamer can use **Undo last change** to restore the previous game version or **Reset demo** to restore the starter game and clear the board and credits.
+8. The overlay’s **Live Code** tab streams the draft diff from the temporary workspace. Its **Timeline** tab replays the blank starter and each shipped build after the most recent **Reset demo**.
+9. The streamer can use **Undo last change** to restore the previous game version and remove that feature from the timeline, or **Reset demo** to restore the starter game, clear the board and credits, and start a fresh replay timeline.
 
 ## Pages
 
 - `/game` — blank neon starfield canvas and OBS browser source. Use `/game?autopilot=1` for feature scenes; Codex is instructed to support the exposed autopilot flag when appropriate.
-- `/overlay` — transparent chat idea board, vote totals, and build updates for OBS.
+- `/overlay` — transparent **Ideas / Live Code / Timeline** panels for OBS. Build start selects Live Code automatically; Timeline steps through the blank baseline and shipped builds after the latest reset.
 - `/admin` — password-protected streamer controls, build queue, errors, undo, and demo reset.
 - `/dev` — local fake-chat tester, available when `CHAT_MODE=dev`.
 
@@ -69,6 +70,9 @@ All settings are listed in `.env.example`:
 - `builder/` runs Codex in the sandbox and validates game changes.
 - `game/game.js` starts as a blank scene with an animated starfield and stable engine helpers for input, neon sprites, particles, sound, collisions, and screen shake; it is the only file the runtime AI builder may edit.
 - `game/ENGINE_API.md` is included in each Codex prompt and documents the helpers that generated features should call.
+- `builder/buildHistory.js` finds the latest Reset demo commit, lists shipped features since that boundary, and serves replay snapshots only from the allowed timeline.
+- `builder/codeDiff.js` creates the small unified diff shown while Codex edits its temporary `game.js`.
+- `game/replay.html` and `game/replay.js` display a selected, server-validated Git snapshot inside the overlay replay panel.
 - `credits/` stores viewer credits outside the game code; runtime data is kept under ignored `runtime/`.
 - `overlay/` and `admin/` contain the OBS overlay and streamer panel.
 

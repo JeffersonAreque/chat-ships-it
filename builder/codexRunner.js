@@ -6,6 +6,7 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { validateGameSource } = require('./gameValidator');
 const { createMockCandidate } = require('./mockBuilder');
+const { createUnifiedDiff } = require('./codeDiff');
 
 const BUILD_TIMEOUT_MS = 3 * 60 * 1000;
 const MAX_GAME_BYTES = 128 * 1024;
@@ -200,7 +201,7 @@ function runGit(projectRoot, args) {
 }
 
 function findLatestResetCommit(projectRoot) {
-  const lines = runGit(projectRoot, ['log', '--format=%H%x09%s']).split(/\r?\n/).filter(Boolean);
+  const lines = runGit(projectRoot, ['log', '--first-parent', '--format=%H%x09%s']).split(/\r?\n/).filter(Boolean);
   const reset = lines.find((line) => line.slice(line.indexOf('\t') + 1) === RESET_COMMIT_SUBJECT);
   return reset ? reset.slice(0, reset.indexOf('\t')) : null;
 }
@@ -266,7 +267,7 @@ async function readCandidate(workspaceDirectory, originalSource) {
 
 function readBuildCommitStack(projectRoot) {
   const baselineCommit = findLatestResetCommit(projectRoot);
-  const args = ['log', '--reverse', '--format=%H%x09%s'];
+  const args = ['log', '--first-parent', '--reverse', '--format=%H%x09%s'];
   if (baselineCommit) args.push(`${baselineCommit}..HEAD`);
   args.push('--', 'game/game.js');
   const log = runGit(projectRoot, args);
@@ -293,6 +294,7 @@ function createCodexRunner({
   projectRoot = path.resolve(__dirname, '..'),
   baselineCommit = null,
   onStatus = () => {},
+  onDiff = () => {},
   onIdle = () => {},
   codexExecutor = runCodex,
   knownFeatureTitles = [],
@@ -384,18 +386,59 @@ function createCodexRunner({
     emitStatus('building', item);
     let originalSource;
     let featureTitle = fallbackFeatureTitle(item.text);
+    let diffTimer = null;
+    let diffReadPending = false;
+    let lastDiff = null;
+    const publishDiff = (diff) => {
+      if (diff === lastDiff) return;
+      lastDiff = diff;
+      try {
+        onDiff({
+          item: { id: item.id, author: sanitizeAuthor(item.author), text: String(item.text || '') },
+          diff,
+          updatedAt: Date.now(),
+        });
+      } catch (error) {
+        console.error('[builder] Could not broadcast the live code diff:', error.message);
+      }
+    };
+    const stopDiffMonitor = async () => {
+      if (diffTimer) clearInterval(diffTimer);
+      diffTimer = null;
+      try {
+        const candidate = await fs.readFile(path.join(workspaceDirectory, 'game.js'), 'utf8');
+        publishDiff(createUnifiedDiff(originalSource, candidate));
+      } catch {}
+    };
+    const startDiffMonitor = () => {
+      if (diffTimer) clearInterval(diffTimer);
+      publishDiff('');
+      diffTimer = setInterval(async () => {
+        if (diffReadPending) return;
+        diffReadPending = true;
+        try {
+          const candidate = await fs.readFile(path.join(workspaceDirectory, 'game.js'), 'utf8');
+          publishDiff(createUnifiedDiff(originalSource, candidate));
+        } catch {}
+        finally { diffReadPending = false; }
+      }, 300);
+      diffTimer.unref?.();
+    };
     try {
       ensureGitReady();
       originalSource = await fs.readFile(gamePath, 'utf8');
       await prepareWorkspace(workspaceDirectory, originalSource);
+      startDiffMonitor();
       let candidate;
       if (buildMode === 'mock') {
         const mockCandidate = createMockCandidate(originalSource, item);
         await fs.writeFile(path.join(workspaceDirectory, 'game.js'), mockCandidate, 'utf8');
+        await stopDiffMonitor();
         emitStatus('validating', item);
         candidate = await readCandidate(workspaceDirectory, originalSource);
       } else {
         const buildResult = await codexExecutor(createCodexPrompt(item), workspaceDirectory, timeoutMs);
+        await stopDiffMonitor();
         featureTitle = featureTitleFromOutput(buildResult?.stdout, item, usedFeatureTitles, (reason, title) => {
           console.warn(`[builder] Ignoring Codex title for build ${item.id} (${JSON.stringify(title)}): ${reason}; using an idea-based fallback.`);
         });
@@ -405,7 +448,9 @@ function createCodexRunner({
         } catch (validationError) {
           emitStatus('retrying', item);
           await prepareWorkspace(workspaceDirectory, originalSource);
+          startDiffMonitor();
           const retryResult = await codexExecutor(createCodexPrompt(item, validationError.message), workspaceDirectory, timeoutMs);
+          await stopDiffMonitor();
           featureTitle = featureTitleFromOutput(retryResult?.stdout, item, usedFeatureTitles, (reason, title) => {
             console.warn(`[builder] Ignoring Codex title for build ${item.id} (${JSON.stringify(title)}): ${reason}; using an idea-based fallback.`);
           });
@@ -432,6 +477,7 @@ function createCodexRunner({
         : error.message;
       emitStatus('failed', item, undefined, errorDetails);
     } finally {
+      if (diffTimer) clearInterval(diffTimer);
       try { await fs.rm(workspaceDirectory, { recursive: true, force: true }); } catch (error) {
         console.error('[builder] Could not clear the temporary workspace:', error.message);
       }

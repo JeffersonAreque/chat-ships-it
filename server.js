@@ -9,6 +9,7 @@ const { createIdeaStore } = require('./ideas/ideaStore');
 const { createBuildQueue } = require('./ideas/buildQueue');
 const { createDevAdapter } = require('./chat/devAdapter');
 const { createCodexRunner } = require('./builder/codexRunner');
+const { readReplayTimeline, readReplaySource } = require('./builder/buildHistory');
 const { createCreditStore } = require('./credits/creditStore');
 
 const app = express();
@@ -30,6 +31,7 @@ const creditStore = createCreditStore({
 });
 const adminPassword = String(process.env.ADMIN_PASSWORD || '').trim();
 let latestBuildNotice = null;
+let latestBuildDiff = null;
 let buildRunner;
 
 if (!['dev', 'twitch'].includes(chatMode)) {
@@ -59,6 +61,21 @@ function broadcastGameReload() {
   for (const socket of websocketServer.clients) sendJson(socket, message);
 }
 
+function broadcastBuildDiff(event) {
+  latestBuildDiff = event;
+  const message = { type: 'build-diff', ...event };
+  for (const socket of websocketServer.clients) sendJson(socket, message);
+}
+
+function getReplayTimeline() {
+  try { return readReplayTimeline(__dirname); } catch { return { baselineCommit: null, steps: [] }; }
+}
+
+function broadcastTimeline() {
+  const message = { type: 'timeline', timeline: getReplayTimeline() };
+  for (const socket of websocketServer.clients) sendJson(socket, message);
+}
+
 function getAppState({ includeBuildErrorDetails = false } = {}) {
   const buildNotice = latestBuildNotice ? { ...latestBuildNotice } : null;
   if (buildNotice && !includeBuildErrorDetails) delete buildNotice.errorDetails;
@@ -75,6 +92,7 @@ buildRunner = createCodexRunner({
   mode: codexMode,
   projectRoot: __dirname,
   knownFeatureTitles: creditStore.getFeatureTitles(),
+  onDiff: broadcastBuildDiff,
   onStatus(event) {
     latestBuildNotice = event;
     if (event.status === 'done' && event.item) {
@@ -83,7 +101,10 @@ buildRunner = createCodexRunner({
       }
     }
     broadcastState();
-    if (event.status === 'done' || event.status === 'undone') broadcastGameReload();
+    if (event.status === 'done' || event.status === 'undone') {
+      broadcastGameReload();
+      broadcastTimeline();
+    }
   },
   onIdle: broadcastState,
 });
@@ -152,6 +173,19 @@ app.use('/game', express.static(gameDirectory, {
 }));
 app.get('/overlay', (request, response) => {
   response.sendFile(path.join(overlayDirectory, 'index.html'));
+});
+app.get('/overlay/api/timeline', (request, response) => {
+  response.set('Cache-Control', 'no-store');
+  response.json({ timeline: getReplayTimeline() });
+});
+app.get('/overlay/api/replay/:commit', (request, response) => {
+  try {
+    const source = readReplaySource(__dirname, request.params.commit);
+    response.set('Cache-Control', 'no-store');
+    response.json({ source });
+  } catch (error) {
+    response.status(404).json({ error: error.message });
+  }
 });
 app.use('/overlay', express.static(overlayDirectory));
 app.get('/dev', (request, response) => {
@@ -231,14 +265,19 @@ app.post('/admin/api/reset-demo', async (request, response) => {
   ideaStore.reset();
   buildQueue.clear();
   latestBuildNotice = null;
+  latestBuildDiff = null;
+  broadcastBuildDiff({ item: null, diff: '', updatedAt: Date.now() });
   broadcastState();
   broadcastGameReload();
+  broadcastTimeline();
   response.json({ state: getAppState() });
 });
 app.use('/admin', express.static(adminDirectory));
 
 websocketServer.on('connection', (socket) => {
   sendJson(socket, { type: 'state', state: getAppState() });
+  if (latestBuildDiff) sendJson(socket, { type: 'build-diff', ...latestBuildDiff });
+  sendJson(socket, { type: 'timeline', timeline: getReplayTimeline() });
 
   socket.on('message', (data) => {
     let message;
