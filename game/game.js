@@ -391,10 +391,13 @@
           lives -= 1;
           invulnerable = 1.1;
           if (lives <= 0) gameOver = true;
-        } else if (enemy.y - enemy.radius > height) {
-          enemies.splice(i, 1);
-          score += 1;
-          if (scoreLabel) scoreLabel.textContent = String(score);
+        } else {
+          if (!enemy.scored && enemy.y - enemy.radius > ship.y + ship.radius) {
+            enemy.scored = true;
+            score += 1;
+            if (scoreLabel) scoreLabel.textContent = String(score);
+          }
+          if (enemy.y - enemy.radius > height) enemies.splice(i, 1);
         }
       }
     },
