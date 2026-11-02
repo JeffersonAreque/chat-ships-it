@@ -325,90 +325,9 @@
   // CHAT_SHIPS_ENGINE_END
 
   // CHAT_SHIPS_FEATURE_START
-  const ship = { x: width / 2, y: height - 72, radius: 17, speed: 280 };
-  const enemies = [];
-  let spawnTimer = 0;
-  let score = 0;
-  let lives = 3;
-  let invulnerable = 0;
-  let gameOver = false;
-
   const feature = {
-    update(delta, elapsed, Engine) {
-      if (gameOver) {
-        if (Engine.input.isAutopilot || Engine.input.wasPressed(' ')) {
-          gameOver = false;
-          score = 0;
-          lives = 3;
-          enemies.length = 0;
-          spawnTimer = 0;
-          ship.x = width / 2;
-          if (scoreLabel) scoreLabel.textContent = '0';
-        }
-        return;
-      }
-
-      invulnerable = Math.max(0, invulnerable - delta);
-      if (Engine.input.isAutopilot) {
-        let safestX = ship.x;
-        let safestScore = -Infinity;
-        for (let candidate = ship.radius; candidate <= width - ship.radius; candidate += 24) {
-          let safety = 0;
-          for (const enemy of enemies) {
-            const timeToShip = Math.max(0, (ship.y - enemy.y) / enemy.speed);
-            safety += Math.min(180, Math.abs(candidate - enemy.x)) / (1 + timeToShip * 0.7);
-          }
-          if (safety > safestScore) { safestScore = safety; safestX = candidate; }
-        }
-        const step = ship.speed * delta;
-        ship.x += Math.max(-step, Math.min(step, safestX - ship.x));
-      } else {
-        const horizontal = Number(Engine.input.isDown('ArrowRight')) - Number(Engine.input.isDown('ArrowLeft'));
-        const vertical = Number(Engine.input.isDown('ArrowDown')) - Number(Engine.input.isDown('ArrowUp'));
-        const length = Math.hypot(horizontal, vertical) || 1;
-        ship.x += horizontal / length * ship.speed * delta;
-        ship.y += vertical / length * ship.speed * delta;
-      }
-      ship.x = Math.max(ship.radius, Math.min(width - ship.radius, ship.x));
-      ship.y = Math.max(ship.radius, Math.min(height - ship.radius, ship.y));
-
-      spawnTimer -= delta;
-      if (spawnTimer <= 0) {
-        const radius = 15 + Math.random() * 9;
-        const enemy = { x: radius + Math.random() * (width - radius * 2), y: -radius, radius, speed: 105 + Math.random() * 65, rotation: Math.random() * Math.PI };
-        enemies.push(enemy);
-        Engine.effects.spawn(enemy.x, enemy.y, Engine.palette.violet);
-        spawnTimer = Math.max(0.42, 1.1 - elapsed * 0.008);
-      }
-
-      for (let i = enemies.length - 1; i >= 0; i -= 1) {
-        const enemy = enemies[i];
-        enemy.y += enemy.speed * delta;
-        enemy.rotation += delta * 0.8;
-        if (Engine.collisions.circles(ship, enemy) && invulnerable <= 0) {
-          Engine.effects.hit(enemy.x, enemy.y, Engine.palette.pink);
-          enemies.splice(i, 1);
-          lives -= 1;
-          invulnerable = 1.1;
-          if (lives <= 0) gameOver = true;
-        } else if (enemy.y - enemy.radius > height) {
-          enemies.splice(i, 1);
-          score += 1;
-          if (scoreLabel) scoreLabel.textContent = String(score);
-        }
-      }
-    },
-    draw(Engine) {
-      for (const enemy of enemies) Engine.sprites.asteroid(enemy.x, enemy.y, enemy.radius, Engine.palette.violet, enemy.rotation);
-      if (invulnerable <= 0 || Math.floor(invulnerable * 12) % 2 === 0) Engine.sprites.ship(ship.x, ship.y, ship.radius, Engine.palette.cyan);
-      Engine.draw.text(`LIVES ${lives}   •   DODGED ${score}`, width / 2, 28, Engine.palette.white, 14);
-      if (gameOver) {
-        Engine.draw.text('SHIP DESTROYED', width / 2, height / 2 - 8, Engine.palette.pink, 28);
-        Engine.draw.text('PRESS SPACE TO RESTART', width / 2, height / 2 + 24, Engine.palette.white, 14);
-      } else if (!Engine.input.isAutopilot) {
-        Engine.draw.text('ARROW KEYS TO DODGE', width / 2, height - 18, Engine.palette.cyan, 13);
-      }
-    },
+    update() {},
+    draw() {},
   };
   Engine.start(feature);
   // CHAT_SHIPS_FEATURE_END
