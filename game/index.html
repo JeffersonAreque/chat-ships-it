@@ -25,8 +25,10 @@
           <li id="stage-shipped" class="stage-dot" aria-label="Shipped"></li>
         </ol>
       </div>
+      <div id="idle-status" class="idle-status" role="status" aria-live="polite">Waiting for chat ideas</div>
       <canvas id="game" width="1280" height="720" aria-label="A game built live by Twitch chat"></canvas>
       <p class="game-help">Ideas in chat → votes → streamer approval → shipped to the game</p>
+      <p class="game-chat-cta">Type <code>!idea &lt;your idea&gt;</code> in chat</p>
       <section id="viewer-credits" class="credit-ticker" aria-label="Viewer credits" hidden>
         <span class="ticker-label">Built by chat:</span>
         <div class="ticker-window"><div id="credits-track" class="ticker-track"><ul id="credit-list"></ul></div></div>

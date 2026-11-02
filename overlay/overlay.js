@@ -13,13 +13,23 @@
   const codeMode = document.querySelector('#code-mode');
   const timelineList = document.querySelector('#timeline');
   const timelineEmpty = document.querySelector('#timeline-empty');
-  const replayFrame = document.querySelector('#replay-frame');
   const replayPosition = document.querySelector('#replay-position');
   const timelineSteps = [];
   let selectedStep = -1;
   let latestTimelineCommit = null;
+  let lastBroadcastCommit = null;
+  let socket;
+  let activePanelIndex = 0;
+  let shippedNoticeKey = null;
+  let postShipIdeaIds = new Set();
+  let postShipRound = null;
 
   function activateTab(index) {
+    if (activePanelIndex === 2 && index !== 2 && socket?.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: 'replay-live' }));
+      lastBroadcastCommit = null;
+    }
+    activePanelIndex = index;
     tabs.forEach((tab, tabIndex) => {
       tab.setAttribute('aria-selected', String(index === tabIndex));
       panels[tabIndex].hidden = index !== tabIndex;
@@ -27,7 +37,11 @@
     if (index === 2) renderReplay();
   }
 
-  tabs.forEach((tab, index) => tab.addEventListener('click', () => activateTab(index)));
+  function sendReplaySelection(commit) {
+    if (!commit || commit === lastBroadcastCommit || socket?.readyState !== WebSocket.OPEN) return;
+    socket.send(JSON.stringify({ type: 'replay-select', commit }));
+    lastBroadcastCommit = commit;
+  }
 
   function renderIdeas(state) {
     const ideas = Array.isArray(state?.topIdeas) ? state.topIdeas : [];
@@ -61,7 +75,21 @@
       list.append(item);
     }
     window.ChatShipsBuildNotice?.render(state);
-    if (['building', 'retrying'].includes(state?.buildNotice?.status)) activateTab(1);
+    const status = state?.buildNotice?.status;
+    const activeIdeaIds = new Set((state?.ideas || []).filter((idea) => idea.status === 'active').map((idea) => idea.id));
+    if (['queued', 'building', 'validating', 'retrying'].includes(status)) activateTab(1);
+    else if (status === 'done') {
+      const noticeKey = `${state.buildNotice.startedAt || ''}:${state.buildNotice.item?.id || state.buildNotice.item?.text || ''}`;
+      if (noticeKey !== shippedNoticeKey) {
+        shippedNoticeKey = noticeKey;
+        postShipIdeaIds = activeIdeaIds;
+        postShipRound = state.round;
+        activateTab(2);
+      } else if (state.round !== postShipRound || [...activeIdeaIds].some((id) => !postShipIdeaIds.has(id))) {
+        activateTab(0);
+      } else activateTab(2);
+    }
+    else activateTab(0);
   }
 
   function renderDiff(event) {
@@ -114,11 +142,11 @@
       timelineList.append(item);
     }
     replayPosition.textContent = hasSteps ? `${selectedStep + 1} / ${timelineSteps.length}` : '0 / 0';
-    replayFrame.hidden = !hasSteps;
-    if (hasSteps && selectedStep >= 0) {
+    if (!panels[2].hidden && hasSteps && selectedStep >= 0) {
       const selected = timelineSteps[selectedStep];
-      const nextUrl = `/game/replay.html?commit=${encodeURIComponent(selected.commit)}`;
-      if (replayFrame.getAttribute('src') !== nextUrl) replayFrame.setAttribute('src', nextUrl);
+      sendReplaySelection(selected.commit);
+    } else if (!hasSteps) {
+      lastBroadcastCommit = null;
     }
   }
 
@@ -146,7 +174,7 @@
 
   function connect() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const socket = new WebSocket(`${protocol}//${window.location.host}`);
+    socket = new WebSocket(`${protocol}//${window.location.host}`);
     socket.addEventListener('message', (event) => {
       let message;
       try { message = JSON.parse(event.data); } catch { return; }

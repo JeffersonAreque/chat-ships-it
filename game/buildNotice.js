@@ -1,5 +1,6 @@
 (() => {
   const banner = document.querySelector('#build-banner');
+  const idleStatus = document.querySelector('#idle-status');
   const clock = document.querySelector('#build-clock');
   const toast = document.querySelector('#build-toast');
   const toastKicker = document.querySelector('#toast-kicker');
@@ -68,9 +69,11 @@
   function render(state) {
     const notice = state?.buildNotice || null;
     const activeStatusIndex = { queued: 0, building: 1, retrying: 1, validating: 2 };
+    if (idleStatus) idleStatus.textContent = 'Waiting for chat ideas';
     if (notice && Object.hasOwn(activeStatusIndex, notice.status)) {
       activeNotice = notice;
       banner.hidden = false;
+      if (idleStatus) idleStatus.hidden = true;
       setStage(activeStatusIndex[notice.status]);
       renderActiveNotice();
       if (toast) toast.hidden = true;
@@ -80,16 +83,16 @@
     }
 
     if (notice?.status === 'done') {
-      activeNotice = { ...notice, status: 'shipped' };
-      banner.hidden = false;
-      setStage(3);
-      renderActiveNotice();
+      activeNotice = null;
+      banner.hidden = true;
+      if (idleStatus) idleStatus.hidden = false;
       celebrate(notice);
       return;
     }
 
     activeNotice = null;
     banner.hidden = true;
+    if (idleStatus) idleStatus.hidden = false;
     if (notice?.status === 'failed') celebrate(notice, true);
     else if (toast) {
       toast.hidden = true;

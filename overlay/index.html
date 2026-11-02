@@ -12,9 +12,9 @@
       <header class="overlay-header">
         <a class="broadcast-mark" href="/game"><span class="broadcast-icon">CS</span><span>CHAT SHIPS IT</span></a>
         <nav class="tabs" role="tablist" aria-label="Overlay panels">
-          <button class="tab" id="ideas-tab" role="tab" aria-selected="true" aria-controls="ideas-panel">Ideas</button>
-          <button class="tab" id="code-tab" role="tab" aria-selected="false" aria-controls="code-panel">Live Code</button>
-          <button class="tab" id="timeline-tab" role="tab" aria-selected="false" aria-controls="timeline-panel">Timeline</button>
+          <span class="tab" id="ideas-tab" role="tab" aria-selected="true" aria-controls="ideas-panel">Ideas</span>
+          <span class="tab" id="code-tab" role="tab" aria-selected="false" aria-controls="code-panel">Live Code</span>
+          <span class="tab" id="timeline-tab" role="tab" aria-selected="false" aria-controls="timeline-panel">Timeline</span>
         </nav>
       </header>
       <div id="build-banner" class="build-status" role="status" aria-live="polite" hidden>
@@ -27,6 +27,7 @@
           <li id="stage-shipped" class="stage-dot" aria-label="Shipped"></li>
         </ol>
       </div>
+      <div id="idle-status" class="idle-status" role="status" aria-live="polite">Waiting for chat ideas</div>
       <aside id="approved" class="viewer-card" aria-live="polite" hidden>
         <span class="card-kicker">CHAT APPROVED</span>
         <strong id="viewer-name">@viewer</strong>
@@ -34,6 +35,7 @@
       </aside>
       <section id="ideas-panel" class="edge-panel ideas-panel" role="tabpanel" aria-labelledby="ideas-tab">
         <div class="panel-heading"><span class="panel-kicker">THE CHAT BOARD</span><span class="panel-count" id="idea-count">0 IDEAS</span></div>
+        <p id="chat-cta" class="chat-cta">Type <code>!idea &lt;your idea&gt;</code> in chat</p>
         <p id="empty" class="empty-state">Waiting for the first <b>!idea</b></p>
         <ol id="ideas"></ol>
       </section>
@@ -49,7 +51,6 @@
         <p id="timeline-empty" class="empty-state">Shipped builds will appear after Reset demo.</p>
         <ol id="timeline"></ol>
       </section>
-      <iframe id="replay-frame" title="Selected game replay step" hidden></iframe>
       <div id="build-toast" class="ship-toast" role="status" aria-live="assertive" hidden>
         <div id="celebration-particles" class="celebration-particles" aria-hidden="true"></div>
         <span id="toast-kicker" class="toast-kicker">SHIPPED TO THE GAME</span>

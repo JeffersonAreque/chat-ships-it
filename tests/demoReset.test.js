@@ -29,7 +29,10 @@ test('admin reset button asks for confirmation and calls the protected reset rou
   const script = fs.readFileSync(path.join(projectRoot, 'admin', 'admin.js'), 'utf8');
   const server = fs.readFileSync(path.join(projectRoot, 'server.js'), 'utf8');
   assert.match(html, /id="reset-demo"/);
-  assert.match(script, /window\.confirm\('Reset the demo to the starter game\?/);
+  assert.match(html, /id="confirm-reset"[^>]+hidden/);
+  assert.match(html, /class="button reset-neutral"/);
+  assert.match(script, /setTimeout\(clearResetConfirmation, 3000\)/);
+  assert.doesNotMatch(script, /window\.confirm\([^)]*Reset demo/i);
   assert.match(script, /postAction\('reset-demo'\)/);
   assert.match(server, /app\.post\('\/admin\/api\/reset-demo'/);
 });

@@ -33,17 +33,23 @@ test('game has a 1280 by 720 OBS canvas, clean OBS chrome, and a chat credit tic
   assert.match(html, /id="game" width="1280" height="720"/);
   assert.match(html, /get\('obs'\) === '1'/);
   assert.match(html, /Built by chat:/);
+  assert.match(html, /Type <code>!idea &lt;your idea&gt;<\/code> in chat/);
   assert.match(css, /html\.obs-mode #game[\s\S]*100vw/);
   assert.match(css, /html\.obs-mode \.wordmark[\s\S]*display:\s*none/);
   assert.match(css, /credit-ticker/);
+  assert.match(css, /ticker-track\.is-entering/);
+  assert.match(css, /ticker-track\.is-running/);
+  assert.match(css, /\.game-chat-cta\s*\{[^}]*position:\s*fixed/);
 });
 
 test('overlay keeps panels at the edges and styles live diff, stage dots, celebration, and timeline thumbnails', () => {
   const html = read('overlay/index.html');
   const css = read('overlay/overlay.css');
-  for (const id of ['build-banner', 'build-clock', 'stage-queued', 'stage-building', 'stage-validating', 'stage-shipped', 'approved', 'live-code', 'timeline', 'replay-frame', 'build-toast', 'celebration-particles']) {
+  for (const id of ['build-banner', 'idle-status', 'build-clock', 'stage-queued', 'stage-building', 'stage-validating', 'stage-shipped', 'approved', 'live-code', 'timeline', 'chat-cta', 'build-toast', 'celebration-particles']) {
     assert.ok(html.includes(`id="${id}"`), `Overlay is missing ${id}`);
   }
+  assert.doesNotMatch(html, /<iframe\b/i, 'the overlay must not duplicate the game canvas');
+  assert.doesNotMatch(html, /<button[^>]+role="tab"/i, 'panel tabs are state indicators, not controls');
   assert.match(css, /\.build-status[\s\S]*top:/);
   assert.match(css, /\.code-panel[\s\S]*bottom:/);
   assert.match(css, /\.timeline-panel[\s\S]*bottom:/);
@@ -51,6 +57,7 @@ test('overlay keeps panels at the edges and styles live diff, stage dots, celebr
   assert.match(css, /\.diff-remove/);
   assert.match(css, /\.timeline-thumb/);
   assert.match(css, /\.ship-toast[\s\S]*50%/);
+  assert.match(css, /\.chat-cta/);
 });
 
 test('admin uses shared brand styling with card sections and clear action roles', () => {
@@ -62,4 +69,8 @@ test('admin uses shared brand styling with card sections and clear action roles'
   assert.match(css, /button\.approve/);
   assert.match(css, /button\.reject/);
   assert.match(css, /\.build-status/);
+  assert.match(css, /\.ideas-card\s*\{[^}]*min-height:\s*2\d\dpx/);
+  assert.match(css, /\.button\.reset-neutral/);
+  assert.match(html, /id="confirm-reset"/);
+  assert.doesNotMatch(read('admin/admin.js'), /window\.confirm\([^)]*Reset demo/i);
 });

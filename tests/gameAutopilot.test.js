@@ -16,7 +16,9 @@ test('the OBS overlay keeps its tabs and places build, viewer, code, and timelin
   assert.match(html, /Ideas/);
   assert.match(html, /Live Code/);
   assert.match(html, /Timeline/);
-  assert.match(html, /id="replay-frame"/);
+  assert.doesNotMatch(html, /<iframe\b/i);
+  assert.match(html, /id="chat-cta"/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'overlay', 'overlay.js'), 'utf8'), /type: 'replay-select'/);
   assert.match(css, /\.build-status\s*\{[^}]*top:/s);
   assert.match(css, /\.viewer-card\s*\{[^}]*right:/s);
   assert.match(css, /\.ideas-panel\s*\{[^}]*left:/s);

@@ -23,7 +23,7 @@ function makeEnvironment(pathname) {
       ...extra,
     };
   }
-  for (const selector of ['#build-banner', '#build-clock', '#build-toast', '#toast-kicker', '#toast-title', '#toast-viewer', '#celebration-particles', '#stage-queued', '#stage-building', '#stage-validating', '#stage-shipped']) {
+  for (const selector of ['#build-banner', '#idle-status', '#build-clock', '#build-toast', '#toast-kicker', '#toast-title', '#toast-viewer', '#celebration-particles', '#stage-queued', '#stage-building', '#stage-validating', '#stage-shipped']) {
     elements.set(selector, element());
   }
   const window = {
@@ -55,6 +55,17 @@ test('shows the live build clock and advances queued, building, and validation s
   }
 });
 
+test('shows an idle message without timer or stages when no build is running', () => {
+  const { elements, notice } = makeEnvironment('/overlay');
+  notice.render({ buildNotice: null });
+  assert.equal(elements.get('#build-banner').hidden, true);
+  assert.equal(elements.get('#idle-status').hidden, false);
+  assert.equal(elements.get('#idle-status').textContent, 'Waiting for chat ideas');
+  notice.render({ buildNotice: { status: 'failed', message: 'Failed' } });
+  assert.equal(elements.get('#build-banner').hidden, true);
+  assert.equal(elements.get('#idle-status').hidden, false);
+});
+
 test('shows a centered shipped celebration for three seconds on the overlay only', () => {
   const overlay = makeEnvironment('/overlay');
   const notice = {
@@ -66,9 +77,8 @@ test('shows a centered shipped celebration for three seconds on the overlay only
     },
   };
   overlay.notice.render(notice);
-  assert.equal(overlay.elements.get('#build-banner').hidden, false);
-  assert.equal(overlay.elements.get('#build-clock').textContent, 'SHIPPED 0:22');
-  assert.equal(overlay.elements.get('#stage-shipped').classList.has('is-complete'), true);
+  assert.equal(overlay.elements.get('#build-banner').hidden, true);
+  assert.equal(overlay.elements.get('#idle-status').hidden, false);
   assert.equal(overlay.elements.get('#build-toast').hidden, false);
   assert.equal(overlay.elements.get('#toast-kicker').textContent, 'SHIPPED TO THE GAME');
   assert.equal(overlay.elements.get('#toast-title').textContent, 'Neon Player Ship');
@@ -79,5 +89,6 @@ test('shows a centered shipped celebration for three seconds on the overlay only
   const game = makeEnvironment('/game');
   game.notice.render(notice);
   assert.equal(game.elements.get('#build-toast').hidden, true);
-  assert.equal(game.elements.get('#build-banner').hidden, false);
+  assert.equal(game.elements.get('#build-banner').hidden, true);
+  assert.equal(game.elements.get('#idle-status').hidden, false);
 });

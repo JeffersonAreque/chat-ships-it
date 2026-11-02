@@ -9,7 +9,7 @@ body { font-size: 14px; }
 .broadcast-mark { display: inline-flex; align-items: center; gap: 10px; color: #d9faff; font: 400 11px var(--mono-font); letter-spacing: .1em; text-decoration: none; text-shadow: 0 2px 12px #000; }
 .broadcast-icon { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid #67e8f977; border-radius: 10px; color: var(--cyan-bright); background: #071827e8; box-shadow: 0 0 18px #22d3ee2a; }
 .tabs { display: flex; gap: 5px; padding: 4px; border: 1px solid #8bb8d333; border-radius: 11px; background: #07111fd9; backdrop-filter: blur(12px); pointer-events: auto; }
-.tab { padding: 8px 12px; border: 0; border-radius: 7px; color: #b7c9dc; background: transparent; font: 400 11px var(--mono-font); cursor: pointer; }
+.tab { display: inline-flex; align-items: center; padding: 8px 12px; border: 0; border-radius: 7px; color: #b7c9dc; background: transparent; font: 400 11px var(--mono-font); cursor: default; }
 .tab[aria-selected="true"] { color: #041019; background: var(--cyan); box-shadow: 0 0 18px #22d3ee4d; }
 [role="tabpanel"][hidden] { display: none !important; }
 
@@ -32,6 +32,23 @@ body { font-size: 14px; }
   backdrop-filter: blur(12px);
 }
 .live-indicator { width: 7px; height: 7px; border-radius: 50%; background: var(--magenta); box-shadow: 0 0 9px var(--magenta); animation: live-pulse 1.2s ease-in-out infinite; }
+.idle-status {
+  position: absolute;
+  top: 25px;
+  left: var(--safe-edge);
+  display: flex;
+  height: 38px;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid #8bb8d344;
+  border-radius: 999px;
+  color: #d5e5f4;
+  background: #06121feb;
+  box-shadow: 0 5px 22px #0007;
+  font: 400 11px var(--mono-font);
+  letter-spacing: .04em;
+  backdrop-filter: blur(12px);
+}
 @keyframes live-pulse { 50% { opacity: .35; } }
 .stage-dots { display: flex; gap: 5px; margin: 0 0 0 4px; padding: 0; list-style: none; }
 .stage-dot { width: 7px; height: 7px; border: 1px solid #7893aa; border-radius: 50%; background: #223346; }
@@ -52,6 +69,8 @@ body { font-size: 14px; }
 
 .ideas-panel { position: absolute; top: 91px; left: var(--safe-edge); width: min(390px, 32vw); max-height: 48vh; padding: 14px; overflow: auto; }
 .panel-heading, .timeline-heading { display: flex; align-items: center; gap: 10px; }
+.chat-cta { margin: 10px 0 3px; padding: 8px 9px; border: 1px solid #67e8f944; border-radius: 8px; color: #d9faff; background: #071927d9; font: 400 10px var(--mono-font); }
+.chat-cta code { color: var(--cyan); font: inherit; }
 .panel-count { margin-left: auto; color: var(--muted); font: 400 9px var(--mono-font); letter-spacing: .08em; }
 #empty { margin: 20px 2px 5px; color: var(--muted); font-size: 12px; }
 #ideas { display: grid; gap: 7px; margin: 11px 0 0; padding: 0; list-style: none; }
@@ -89,7 +108,6 @@ body { font-size: 14px; }
 .step-title { display: block; overflow: hidden; color: #eefaff; font-size: 10px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .step-meta { display: block; overflow: hidden; margin-top: 4px; color: var(--muted); font: 400 8px var(--mono-font); text-overflow: ellipsis; white-space: nowrap; }
 .empty-state { margin: 6px 0 0; color: var(--muted); font-size: 10px; }
-#replay-frame { position: absolute; right: var(--safe-edge); bottom: 137px; width: min(330px, 28vw); aspect-ratio: 16 / 9; border: 1px solid #67e8f955; border-radius: 10px; background: #050814; box-shadow: 0 15px 40px #0008; pointer-events: auto; }
 
 .ship-toast { position: absolute; top: 50%; left: 50%; display: grid; min-width: 430px; max-width: min(720px, 82vw); justify-items: center; gap: 8px; padding: 28px 45px 32px; transform: translate(-50%, -50%); border: 1px solid #f472d099; border-radius: 23px; color: white; background: linear-gradient(145deg, #10152bf5, #081321f5); box-shadow: 0 28px 100px #000b, 0 0 64px #f472d032; text-align: center; }
 .toast-kicker { color: var(--cyan); font: 400 10px var(--mono-font); letter-spacing: .2em; }
@@ -111,7 +129,6 @@ body { font-size: 14px; }
   .timeline-panel { height: 100px; }
   .timeline-step { flex-basis: 160px; grid-template-columns: 58px minmax(70px, 1fr); }
   .timeline-thumb { height: 37px; }
-  #replay-frame { bottom: 130px; width: 31vw; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -290,6 +290,21 @@ websocketServer.on('connection', (socket) => {
       return;
     }
 
+    if (message.type === 'replay-select') {
+      try {
+        readReplaySource(__dirname, String(message.commit || ''));
+        for (const client of websocketServer.clients) sendJson(client, { type: 'replay-select', commit: String(message.commit) });
+      } catch (error) {
+        sendJson(socket, { type: 'error', message: error.message });
+      }
+      return;
+    }
+
+    if (message.type === 'replay-live') {
+      for (const client of websocketServer.clients) sendJson(client, { type: 'replay-live' });
+      return;
+    }
+
     if (chatMode !== 'dev' || message.type !== 'chat') {
       sendJson(socket, { type: 'error', message: 'This WebSocket connection does not accept chat input.' });
       return;

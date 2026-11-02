@@ -23,6 +23,14 @@
         copy.className = 'ticker-copy';
         copy.setAttribute('aria-hidden', 'true');
         track.append(copy);
+        track.classList.remove('is-entering', 'is-running');
+        void track.offsetWidth;
+        track.classList.add('is-entering');
+        track.addEventListener('animationend', (event) => {
+          if (event.animationName !== 'ticker-enter') return;
+          track.classList.remove('is-entering');
+          track.classList.add('is-running');
+        }, { once: true });
       }
     } catch {
       section.hidden = true;

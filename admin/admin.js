@@ -9,9 +9,26 @@
   const nextRoundButton = document.querySelector('#next-round');
   const undoButton = document.querySelector('#undo-change');
   const resetDemoButton = document.querySelector('#reset-demo');
+  const confirmResetButton = document.querySelector('#confirm-reset');
   const buildStatus = document.querySelector('#build-status');
   const buildError = document.querySelector('#build-error');
   let socket;
+  let resetConfirmationTimer;
+
+  function clearResetConfirmation() {
+    if (resetConfirmationTimer) window.clearTimeout(resetConfirmationTimer);
+    resetConfirmationTimer = null;
+    confirmResetButton.hidden = true;
+    resetDemoButton.textContent = 'Reset demo';
+  }
+
+  function armResetConfirmation() {
+    clearResetConfirmation();
+    confirmResetButton.hidden = false;
+    resetDemoButton.textContent = 'Reset armed';
+    actionStatus.textContent = 'This clears the demo ideas, credits, queue, and game. Confirm within 3 seconds.';
+    resetConfirmationTimer = window.setTimeout(clearResetConfirmation, 3000);
+  }
 
   function addIdea(idea) {
     const item = document.createElement('li');
@@ -71,6 +88,7 @@
     buildError.hidden = !state.buildNotice?.errorDetails;
     undoButton.disabled = !state.canUndo;
     resetDemoButton.disabled = queue.some((entry) => ['waiting', 'building'].includes(entry.status));
+    if (resetDemoButton.disabled) clearResetConfirmation();
     ideasList.replaceChildren();
     queueList.replaceChildren();
     ideasEmpty.hidden = ideas.length > 0;
@@ -140,15 +158,23 @@
     }
   });
 
-  resetDemoButton.addEventListener('click', async () => {
-    if (!window.confirm('Reset the demo to the starter game? This clears viewer credits, ideas, votes, and the build queue.')) return;
+  resetDemoButton.addEventListener('click', () => {
+    if (!resetDemoButton.disabled) armResetConfirmation();
+  });
+
+  confirmResetButton.addEventListener('click', async () => {
+    if (confirmResetButton.hidden) return;
+    clearResetConfirmation();
     resetDemoButton.disabled = true;
+    confirmResetButton.disabled = true;
     try {
       await postAction('reset-demo');
     } catch (error) {
       actionStatus.textContent = error.message;
     } finally {
       resetDemoButton.disabled = false;
+      confirmResetButton.disabled = false;
+      clearResetConfirmation();
     }
   });
 
