@@ -12,6 +12,7 @@ const {
   createCodexRunner,
   fallbackFeatureTitle,
   featureTitleFromOutput,
+  findLatestResetCommit,
   STARTER_GAME_COMMIT,
 } = require('../builder/codexRunner');
 
@@ -19,7 +20,10 @@ async function makeProject(t) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'chat-ships-build-'));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   await fs.mkdir(path.join(root, 'game'), { recursive: true });
-  await fs.writeFile(path.join(root, 'game', 'game.js'), await fs.readFile(path.join(__dirname, '..', 'game', 'game.js'), 'utf8'));
+  const repositoryRoot = path.join(__dirname, '..');
+  const baselineCommit = findLatestResetCommit(repositoryRoot);
+  const blankStarter = execFileSync('git', ['show', `${baselineCommit}:game/game.js`], { cwd: repositoryRoot, encoding: 'utf8' });
+  await fs.writeFile(path.join(root, 'game', 'game.js'), blankStarter);
   execFileSync('git', ['init', '--quiet'], { cwd: root });
   execFileSync('git', ['config', 'user.name', 'Chat Ships It Tests'], { cwd: root });
   execFileSync('git', ['config', 'user.email', 'tests@example.invalid'], { cwd: root });
@@ -57,6 +61,13 @@ test('keeps viewer text untrusted and uses only the restricted Codex sandbox opt
   assert.ok(!args.some((argument) => /dangerously-bypass|danger-full-access|--add-dir/i.test(argument)));
 });
 
+test('asks for a fresh title for the current idea without a stale title example', () => {
+  const prompt = createCodexPrompt({ text: 'make enemies fall from the top', author: 'ana' });
+  assert.match(prompt, /fresh 2-3 word title/i);
+  assert.match(prompt, /specific approved idea/i);
+  assert.doesNotMatch(prompt, /Cat Asteroids/);
+});
+
 test('candidate validation rejects changes to the protected engine section', async () => {
   const baseline = await fs.readFile(path.join(__dirname, '..', 'game', 'game.js'), 'utf8');
   const changedEngine = baseline.replace('background: \'#050814\'', 'background: \'#000000\'');
@@ -67,12 +78,16 @@ test('uses Codex feature titles with a safe two-word fallback', () => {
   const item = { text: 'make the asteroids cats' };
   assert.equal(featureTitleFromOutput('Finished.\nFEATURE_TITLE: Cat Asteroids\n', item), 'Cat Asteroids');
   assert.equal(featureTitleFromOutput('FEATURE_TITLE: Rainbow Trail', { text: 'make the ship leave a rainbow trail' }), 'Rainbow Trail');
-  assert.equal(featureTitleFromOutput('FEATURE_TITLE: Cat Asteroids', { text: 'make the asteroids glow neon green' }), 'Asteroid Glow Neon');
-  assert.equal(featureTitleFromOutput('FEATURE_TITLE: Cat', item), 'Asteroid Cat');
+  assert.equal(featureTitleFromOutput('FEATURE_TITLE: Cat Asteroids', { text: 'make the asteroids glow neon green' }), 'Asteroids Glow Neon');
+  assert.equal(featureTitleFromOutput('FEATURE_TITLE: Cat', item), 'Asteroids Cats');
   assert.equal(featureTitleFromOutput('FEATURE_TITLE: Cat Asteroids', { text: 'add a shield that blocks one hit' }), 'Shield One Hit');
   assert.equal(featureTitleFromOutput('FEATURE_TITLE: Cat Asteroids', { text: 'add a shield that blocks one hit' }, ['Cat Asteroids']), 'Shield One Hit');
   assert.equal(fallbackFeatureTitle('make the ship leave a rainbow trail'), 'Ship Rainbow Trail');
-  assert.equal(fallbackFeatureTitle('make the asteroids glow neon green'), 'Asteroid Glow Neon');
+  assert.equal(fallbackFeatureTitle('make the asteroids glow neon green'), 'Asteroids Glow Neon');
+  assert.equal(fallbackFeatureTitle('make enemies fall from the top'), 'Enemies Fall Top');
+  assert.equal(fallbackFeatureTitle('make score goes up'), 'Score Goes Up');
+  assert.equal(featureTitleFromOutput('FEATURE_TITLE: Cat Asteroids', { text: 'make enemies fall from the top' }), 'Enemies Fall Top');
+  assert.equal(featureTitleFromOutput('FEATURE_TITLE: Cat Asteroids', { text: 'make score goes up' }), 'Score Goes Up');
   const rejected = [];
   featureTitleFromOutput('', item, [], (reason) => rejected.push(reason));
   assert.match(rejected[0], /no FEATURE_TITLE/);
@@ -93,8 +108,9 @@ test('consecutive builds never reuse the previous idea title', async (t) => {
     projectRoot: root,
     timeoutMs: 5000,
     onStatus: (event) => statuses.push(event),
-    codexExecutor: async (_prompt, workspace) => {
+    codexExecutor: async (prompt, workspace) => {
       calls += 1;
+      if (calls === 2) assert.ok(prompt.includes('cat asteroids'), 'Codex should be told which feature title has already shipped');
       assert.deepEqual(await fs.readdir(workspace), ['game.js']);
       const source = await fs.readFile(path.join(root, 'game', 'game.js'), 'utf8');
       const label = calls === 1 ? 'Cats' : 'Shield';

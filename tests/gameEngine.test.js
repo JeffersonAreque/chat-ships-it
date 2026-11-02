@@ -1,14 +1,17 @@
 const assert = require('node:assert/strict');
+const { execFileSync } = require('node:child_process');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const test = require('node:test');
 const { validateGameSource } = require('../builder/gameValidator');
+const { findLatestResetCommit } = require('../builder/codexRunner');
 
-const gamePath = path.join(__dirname, '..', 'game', 'game.js');
 const apiPath = path.join(__dirname, '..', 'game', 'ENGINE_API.md');
 
 test('blank starter runs the engine and draws no playable scene', async () => {
-  const source = await fs.readFile(gamePath, 'utf8');
+  const repositoryRoot = path.join(__dirname, '..');
+  const baselineCommit = findLatestResetCommit(repositoryRoot);
+  const source = execFileSync('git', ['show', `${baselineCommit}:game/game.js`], { cwd: repositoryRoot, encoding: 'utf8' });
   const result = validateGameSource(source);
 
   assert.match(source, /CHAT_SHIPS_ENGINE_START[\s\S]*CHAT_SHIPS_ENGINE_END/);
