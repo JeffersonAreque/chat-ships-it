@@ -371,11 +371,16 @@
           Engine.effects.hit(enemy.x, enemy.y, Engine.palette.pink);
           enemies.splice(i, 1);
           hitFlash = 0.22;
-        } else if (enemy.y - enemy.radius > height) {
-          enemies.splice(i, 1);
-          score += 1;
-          if (scoreLabel) scoreLabel.textContent = String(score);
-          Engine.sound.play('collect');
+        } else {
+          if (!enemy.scored && enemy.y - enemy.radius > ship.y + ship.radius) {
+            enemy.scored = true;
+            score += 1;
+            if (scoreLabel) scoreLabel.textContent = String(score);
+            Engine.sound.play('collect');
+          }
+          if (enemy.y - enemy.radius > height) {
+            enemies.splice(i, 1);
+          }
         }
       }
       hitFlash = Math.max(0, hitFlash - delta);
