@@ -326,34 +326,8 @@
 
   // CHAT_SHIPS_FEATURE_START
   const feature = {
-    x: width / 2,
-    y: height * 0.68,
-    trail: 0,
-    update(delta, elapsed, Engine) {
-      const speed = 250;
-      let dx = Number(Engine.input.isDown('ArrowRight')) - Number(Engine.input.isDown('ArrowLeft'));
-      let dy = Number(Engine.input.isDown('ArrowDown')) - Number(Engine.input.isDown('ArrowUp'));
-      if (Engine.input.isAutopilot) {
-        dx = Math.cos(elapsed * 0.8) * 0.65;
-        dy = Math.sin(elapsed * 1.1) * 0.45;
-      }
-      const length = Math.hypot(dx, dy) || 1;
-      this.x = Math.max(24, Math.min(width - 24, this.x + (dx / length) * speed * delta));
-      this.y = Math.max(28, Math.min(height - 28, this.y + (dy / length) * speed * delta));
-      if (Math.abs(dx) + Math.abs(dy) > 0.05) {
-        this.trail += delta;
-        if (this.trail > 0.09) {
-          Engine.particles.burst(this.x, this.y + 17, Engine.palette.violet, 2);
-          this.trail = 0;
-        }
-      }
-    },
-    draw(Engine) {
-      Engine.draw.circle(this.x, this.y, 26, Engine.palette.cyan, false);
-      Engine.sprites.ship(this.x, this.y, 22, Engine.palette.cyan);
-      Engine.draw.line(this.x - 5, this.y + 15, this.x, this.y + 26, Engine.palette.pink, 2);
-      Engine.draw.line(this.x + 5, this.y + 15, this.x, this.y + 26, Engine.palette.pink, 2);
-    },
+    update() {},
+    draw() {},
   };
   Engine.start(feature);
   // CHAT_SHIPS_FEATURE_END
