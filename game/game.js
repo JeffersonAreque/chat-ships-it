@@ -325,36 +325,9 @@
   // CHAT_SHIPS_ENGINE_END
 
   // CHAT_SHIPS_FEATURE_START
-  const ship = { x: width / 2, y: height / 2, size: 20, speed: 270 };
-  let entered = false;
   const feature = {
-    update(delta, elapsed, Engine) {
-      if (!entered) {
-        Engine.effects.spawn(ship.x, ship.y, Engine.palette.cyan);
-        entered = true;
-      }
-      let dx = 0;
-      let dy = 0;
-      if (Engine.input.isAutopilot) {
-        ship.x = width / 2 + Math.cos(elapsed * 0.65) * width * 0.28;
-        ship.y = height / 2 + Math.sin(elapsed * 0.9) * height * 0.25;
-      } else {
-        if (Engine.input.isDown('arrowleft')) dx -= 1;
-        if (Engine.input.isDown('arrowright')) dx += 1;
-        if (Engine.input.isDown('arrowup')) dy -= 1;
-        if (Engine.input.isDown('arrowdown')) dy += 1;
-        const length = Math.hypot(dx, dy) || 1;
-        ship.x += (dx / length) * ship.speed * delta;
-        ship.y += (dy / length) * ship.speed * delta;
-      }
-      ship.x = Math.max(ship.size, Math.min(width - ship.size, ship.x));
-      ship.y = Math.max(ship.size, Math.min(height - ship.size, ship.y));
-    },
-    draw(Engine) {
-      Engine.draw.circle(ship.x, ship.y, ship.size + 8, Engine.palette.cyan, false);
-      Engine.sprites.ship(ship.x, ship.y, ship.size, Engine.palette.cyan);
-      Engine.draw.text(Engine.input.isAutopilot ? 'AUTOPILOT' : 'ARROW KEYS TO FLY', width / 2, height - 20, Engine.palette.white, 13);
-    },
+    update() {},
+    draw() {},
   };
   Engine.start(feature);
   // CHAT_SHIPS_FEATURE_END
