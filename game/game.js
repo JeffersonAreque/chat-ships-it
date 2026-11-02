@@ -325,10 +325,43 @@
   // CHAT_SHIPS_ENGINE_END
 
   // CHAT_SHIPS_FEATURE_START
-  const feature = {
-    update() {},
-    draw() {},
-  };
+  const feature = (() => {
+    const ship = { x: width / 2, y: height / 2, radius: 17 };
+    let trail = 0;
+    let shown = false;
+
+    return {
+      update(delta, elapsed, Engine) {
+        const speed = 245;
+        let dx = Number(Engine.input.isDown('ArrowRight')) - Number(Engine.input.isDown('ArrowLeft'));
+        let dy = Number(Engine.input.isDown('ArrowDown')) - Number(Engine.input.isDown('ArrowUp'));
+        if (Engine.input.isAutopilot) {
+          dx = Math.cos(elapsed * 0.72) * 0.72;
+          dy = Math.sin(elapsed * 0.95) * 0.72;
+        }
+        const length = Math.hypot(dx, dy) || 1;
+        ship.x = Math.max(ship.radius + 8, Math.min(width - ship.radius - 8, ship.x + dx / length * speed * delta));
+        ship.y = Math.max(ship.radius + 8, Math.min(height - ship.radius - 8, ship.y + dy / length * speed * delta));
+        if (!shown) {
+          Engine.effects.spawn(ship.x, ship.y, Engine.palette.cyan);
+          shown = true;
+        }
+        trail += delta;
+        if ((dx || dy) && trail > 0.055) {
+          Engine.particles.burst(ship.x, ship.y + 13, Engine.palette.violet, 2);
+          trail = 0;
+        }
+      },
+      draw(Engine) {
+        const { cyan, violet, white } = Engine.palette;
+        Engine.draw.circle(ship.x, ship.y, 31, cyan, false);
+        Engine.draw.circle(ship.x, ship.y, 36, violet, false);
+        Engine.sprites.ship(ship.x, ship.y, ship.radius, cyan);
+        Engine.draw.text('NEON PILOT', width / 2, 35, white, 18);
+        Engine.draw.text(Engine.input.isAutopilot ? 'AUTOPILOT' : 'ARROW KEYS TO MOVE', width / 2, height - 24, cyan, 13);
+      },
+    };
+  })();
   Engine.start(feature);
   // CHAT_SHIPS_FEATURE_END
 })();
