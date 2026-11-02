@@ -326,6 +326,9 @@
 
   // CHAT_SHIPS_FEATURE_START
   const ship = { x: width / 2, y: height / 2, size: 22, speed: 260, spawned: false };
+  const asteroids = [];
+  let nextAsteroid = 0;
+  let invulnerable = 0;
   const feature = {
     update(delta, elapsed, Engine) {
       if (!ship.spawned) {
@@ -333,20 +336,59 @@
         Engine.effects.spawn(ship.x, ship.y, Engine.palette.cyan);
       }
       if (Engine.input.isAutopilot) {
-        ship.x = width / 2 + Math.sin(elapsed * 0.72) * width * 0.3;
-        ship.y = height / 2 + Math.cos(elapsed * 1.08) * height * 0.25;
-        return;
+        ship.y = height * 0.68;
+        const danger = asteroids.filter((asteroid) => asteroid.y < ship.y + 100
+          && asteroid.y + asteroid.speed * 0.65 > ship.y - 35);
+        const lanes = [0.12, 0.25, 0.38, 0.5, 0.62, 0.75, 0.88].map((part) => width * part);
+        const safest = lanes.reduce((best, lane) => {
+          const risk = danger.reduce((sum, asteroid) => sum
+            + Math.max(0, 150 - Math.hypot(lane - asteroid.x, ship.y - asteroid.y)), 0);
+          return risk < best.risk ? { x: lane, risk } : best;
+        }, { x: ship.x, risk: Infinity });
+        ship.x += Math.max(-1, Math.min(1, safest.x - ship.x)) * ship.speed * delta;
+      } else {
+        const horizontal = Number(Engine.input.isDown('ArrowRight')) - Number(Engine.input.isDown('ArrowLeft'));
+        const vertical = Number(Engine.input.isDown('ArrowDown')) - Number(Engine.input.isDown('ArrowUp'));
+        const length = Math.hypot(horizontal, vertical) || 1;
+        ship.x += horizontal / length * ship.speed * delta;
+        ship.y += vertical / length * ship.speed * delta;
       }
-      const horizontal = Number(Engine.input.isDown('ArrowRight')) - Number(Engine.input.isDown('ArrowLeft'));
-      const vertical = Number(Engine.input.isDown('ArrowDown')) - Number(Engine.input.isDown('ArrowUp'));
-      const length = Math.hypot(horizontal, vertical) || 1;
-      ship.x = Math.max(ship.size, Math.min(width - ship.size, ship.x + horizontal / length * ship.speed * delta));
-      ship.y = Math.max(ship.size, Math.min(height - ship.size, ship.y + vertical / length * ship.speed * delta));
+      ship.x = Math.max(ship.size, Math.min(width - ship.size, ship.x));
+      ship.y = Math.max(ship.size, Math.min(height - ship.size, ship.y));
+
+      nextAsteroid -= delta;
+      if (nextAsteroid <= 0) {
+        const radius = 14 + Math.random() * 10;
+        const x = radius + Math.random() * (width - radius * 2);
+        asteroids.push({ x, y: -radius, radius, speed: 105 + Math.random() * 105, rotation: Math.random() * 6 });
+        Engine.effects.spawn(x, 0, Engine.palette.pink);
+        nextAsteroid = 0.48 + Math.random() * 0.38;
+      }
+      invulnerable = Math.max(0, invulnerable - delta);
+      for (let index = asteroids.length - 1; index >= 0; index -= 1) {
+        const asteroid = asteroids[index];
+        asteroid.y += asteroid.speed * delta;
+        asteroid.rotation += delta * 0.8;
+        if (asteroid.y > height + asteroid.radius) {
+          asteroids.splice(index, 1);
+        } else if (invulnerable === 0 && Engine.collisions.circles(
+          { x: ship.x, y: ship.y, radius: ship.size * 0.65 }, asteroid,
+        )) {
+          Engine.effects.hit(asteroid.x, asteroid.y, Engine.palette.pink);
+          asteroids.splice(index, 1);
+          invulnerable = 0.7;
+        }
+      }
     },
     draw(Engine) {
-      Engine.draw.line(ship.x, ship.y + 12, ship.x, ship.y + 28, Engine.palette.pink, 3);
-      Engine.sprites.ship(ship.x, ship.y, ship.size, Engine.palette.cyan);
-      Engine.draw.text('ARROW KEYS TO FLY', width / 2, height - 20, Engine.palette.white, 13);
+      for (const asteroid of asteroids) {
+        Engine.sprites.asteroid(asteroid.x, asteroid.y, asteroid.radius, Engine.palette.pink, asteroid.rotation);
+      }
+      if (invulnerable === 0 || Math.floor(invulnerable * 14) % 2 === 0) {
+        Engine.draw.line(ship.x, ship.y + 12, ship.x, ship.y + 28, Engine.palette.pink, 3);
+        Engine.sprites.ship(ship.x, ship.y, ship.size, Engine.palette.cyan);
+      }
+      Engine.draw.text('DODGE THE PINK ASTEROIDS', width / 2, height - 20, Engine.palette.white, 13);
     },
   };
   Engine.start(feature);
