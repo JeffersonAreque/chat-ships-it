@@ -326,6 +326,10 @@
 
   // CHAT_SHIPS_FEATURE_START
   const ship = { x: width / 2, y: height / 2, radius: 18, speed: 250, born: false };
+  const enemies = [];
+  let spawnIn = 0;
+  let score = 0;
+  let hitFlash = 0;
   const feature = {
     update(delta, elapsed, Engine) {
       if (!ship.born) {
@@ -336,16 +340,50 @@
       let dx = Number(Engine.input.isDown('ArrowRight')) - Number(Engine.input.isDown('ArrowLeft'));
       let dy = Number(Engine.input.isDown('ArrowDown')) - Number(Engine.input.isDown('ArrowUp'));
       if (Engine.input.isAutopilot) {
-        dx = Math.cos(elapsed * 0.75);
-        dy = Math.sin(elapsed * 1.1) * 0.7;
+        ship.y = height * 0.76;
+        dx = Math.sin(elapsed * 1.6) * 1.5;
+        const nearest = enemies.reduce((best, enemy) => {
+          const danger = Math.abs(enemy.x - ship.x) + Math.max(0, ship.y - enemy.y) * 0.55;
+          return danger < best.danger ? { enemy, danger } : best;
+        }, { enemy: null, danger: Infinity }).enemy;
+        if (nearest && nearest.y < ship.y + 100 && Math.abs(nearest.x - ship.x) < 105) {
+          dx = ship.x < nearest.x ? -1 : 1;
+        }
       }
       const magnitude = Math.hypot(dx, dy) || 1;
       ship.x = Math.max(ship.radius + 4, Math.min(width - ship.radius - 4, ship.x + (dx / magnitude) * ship.speed * delta));
       ship.y = Math.max(ship.radius + 4, Math.min(height - ship.radius - 4, ship.y + (dy / magnitude) * ship.speed * delta));
+
+      spawnIn -= delta;
+      if (spawnIn <= 0) {
+        const radius = 13 + Math.random() * 10;
+        const enemy = { x: radius + Math.random() * (width - radius * 2), y: -radius, radius,
+          speed: 115 + Math.random() * 100 + Math.min(100, elapsed * 2), rotation: Math.random() * 6 };
+        enemies.push(enemy);
+        Engine.effects.spawn(enemy.x, enemy.y, Engine.palette.pink);
+        spawnIn = Math.max(0.38, 0.95 - elapsed * 0.006);
+      }
+      for (let i = enemies.length - 1; i >= 0; i -= 1) {
+        const enemy = enemies[i];
+        enemy.y += enemy.speed * delta;
+        enemy.rotation += delta * 1.5;
+        if (Engine.collisions.circles(ship, enemy)) {
+          Engine.effects.hit(enemy.x, enemy.y, Engine.palette.pink);
+          enemies.splice(i, 1);
+          hitFlash = 0.22;
+        } else if (enemy.y - enemy.radius > height) {
+          enemies.splice(i, 1);
+          score += 1;
+          if (scoreLabel) scoreLabel.textContent = String(score);
+          Engine.sound.play('collect');
+        }
+      }
+      hitFlash = Math.max(0, hitFlash - delta);
     },
     draw(Engine) {
-      Engine.sprites.ship(ship.x, ship.y, ship.radius, Engine.palette.cyan);
-      Engine.draw.text('ARROW KEYS TO FLY', width / 2, height - 20, Engine.palette.white, 13);
+      for (const enemy of enemies) Engine.sprites.asteroid(enemy.x, enemy.y, enemy.radius, Engine.palette.pink, enemy.rotation);
+      Engine.sprites.ship(ship.x, ship.y, ship.radius, hitFlash ? Engine.palette.white : Engine.palette.cyan);
+      Engine.draw.text('DODGE THE FALLING ASTEROIDS', width / 2, height - 20, Engine.palette.white, 13);
     },
   };
   Engine.start(feature);
