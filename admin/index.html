@@ -3,64 +3,49 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Chat Ships It — Streamer Admin</title>
-    <style>
-      :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #091321; color: #edf4ff; }
-      * { box-sizing: border-box; }
-      body { max-width: 1080px; margin: 0 auto; padding: 28px 18px 48px; }
-      header, .section-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
-      h1 { margin: 0; font-size: clamp(1.5rem, 4vw, 2rem); }
-      h2 { margin: 0; font-size: 1.2rem; }
-      p, small { color: #a8b7ca; }
-      #connection { margin: 8px 0 24px; }
-      section { margin-top: 28px; }
-      .section-heading { margin-bottom: 12px; }
-      ol { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
-      li { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px; border: 1px solid #293b50; border-radius: 10px; background: #122035; }
-      .idea-copy, .queue-copy { min-width: 0; overflow-wrap: anywhere; }
-      .idea-text { display: block; font-weight: 700; }
-      .meta { display: block; margin-top: 5px; color: #a8b7ca; font-size: .9rem; }
-      .actions { display: flex; flex-wrap: wrap; gap: 8px; flex-shrink: 0; }
-      button { padding: 9px 12px; border: 0; border-radius: 7px; color: #06111e; background: #67e8f9; font: inherit; font-weight: 700; cursor: pointer; }
-      button.reject { color: #fff; background: #be4451; }
-      button.secondary { color: #e2e8f0; background: #35465d; }
-      button:disabled { cursor: wait; opacity: .55; }
-      .empty { padding: 14px; border-radius: 10px; background: #122035; }
-      .status { color: #bae6fd; }
-      #build-status { min-height: 1.4em; padding: 10px 12px; border-left: 3px solid #38bdf8; background: #122035; }
-      #build-error { max-height: 16rem; overflow: auto; padding: 10px 12px; border: 1px solid #85454a; border-radius: 8px; color: #fecaca; background: #291820; white-space: pre-wrap; overflow-wrap: anywhere; font: .85rem/1.45 ui-monospace, monospace; }
-      .queue-status { padding: 4px 8px; border: 1px solid #41607a; border-radius: 999px; color: #bae6fd; font-size: .82rem; white-space: nowrap; }
-      @media (max-width: 650px) { li { align-items: flex-start; flex-direction: column; } }
-    </style>
+    <title>Chat Ships It — Stream Control Room</title>
+    <link rel="stylesheet" href="/assets/brand.css">
+    <link rel="stylesheet" href="/admin/admin.css">
   </head>
   <body>
-    <main>
-      <header>
-        <h1>Streamer admin</h1>
-        <div class="actions">
-          <button id="undo-change" class="secondary" type="button" disabled>Undo last change</button>
-          <button id="reset-demo" class="reject" type="button">Reset demo</button>
-          <button id="next-round" class="secondary" type="button">Next round</button>
+    <main class="admin-shell">
+      <header class="admin-header">
+        <div class="admin-brand">
+          <a class="brand-icon" href="/game" aria-label="Chat Ships It home">CS</a>
+          <div><p class="eyebrow">CHAT SHIPS IT · STREAMER CONSOLE</p><h1>Stream control room</h1></div>
+        </div>
+        <div class="header-actions">
+          <button id="undo-change" class="button secondary" type="button" disabled>Undo last change</button>
+          <button id="reset-demo" class="button warning" type="button">Reset demo</button>
+          <button id="next-round" class="button secondary" type="button">Next round</button>
         </div>
       </header>
-      <p id="connection" role="status">Connecting to the game server…</p>
-      <p id="build-status" role="status" aria-live="polite">No build running.</p>
-      <pre id="build-error" role="alert" hidden></pre>
+      <p id="connection" class="connection-status" role="status"><span class="connection-dot"></span>Connecting to the game server…</p>
+      <p id="action-status" class="action-status" aria-live="polite"></p>
 
-      <section aria-labelledby="ideas-title">
-        <div class="section-heading">
-          <h2 id="ideas-title">Round <span id="round-number">1</span> ideas</h2>
-          <span id="action-status" class="status" aria-live="polite"></span>
-        </div>
-        <p id="ideas-empty" class="empty">No ideas in this round yet.</p>
-        <ol id="ideas"></ol>
-      </section>
+      <div class="dashboard-grid">
+        <section id="ideas-card" class="dashboard-card ideas-card" aria-labelledby="ideas-title">
+          <div class="card-heading">
+            <div><p class="eyebrow">MODERATION</p><h2 id="ideas-title">Round <span id="round-number">1</span> ideas</h2></div>
+            <span class="card-icon">01</span>
+          </div>
+          <p id="ideas-empty" class="empty-state">No ideas in this round yet.</p>
+          <ol id="ideas" class="item-list"></ol>
+        </section>
 
-      <section aria-labelledby="queue-title">
-        <div class="section-heading"><h2 id="queue-title">Build queue</h2></div>
-        <p id="queue-empty" class="empty">No approved ideas are waiting to be built.</p>
-        <ol id="queue"></ol>
-      </section>
+        <section id="build-card" class="dashboard-card build-card" aria-labelledby="queue-title">
+          <div class="card-heading">
+            <div><p class="eyebrow">CODEX SHIPYARD</p><h2 id="queue-title">Build status</h2></div>
+            <span class="card-icon magenta">02</span>
+          </div>
+          <p id="build-status" class="build-status" role="status" aria-live="polite">No build running.</p>
+          <pre id="build-error" class="build-error" role="alert" hidden></pre>
+          <div class="queue-heading"><h3>Build queue</h3><span class="queue-label">APPROVED IDEAS</span></div>
+          <p id="queue-empty" class="empty-state">No approved ideas are waiting to be built.</p>
+          <ol id="queue" class="item-list queue-list"></ol>
+        </section>
+      </div>
+      <footer class="admin-footer"><span>Ideas need your approval before Codex builds.</span><a href="/overlay">Open broadcast overlay ↗</a></footer>
     </main>
     <script src="/admin/admin.js" defer></script>
   </body>

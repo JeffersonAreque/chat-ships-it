@@ -31,14 +31,14 @@
     if (idea.status === 'active') {
       actions.className = 'actions';
       for (const [action, label, className] of [
-        ['approve', 'Approve', ''],
+        ['approve', 'Approve', 'approve'],
         ['reject', 'Reject', 'reject'],
       ]) {
         const button = document.createElement('button');
         button.type = 'button';
         button.dataset.action = action;
         button.dataset.ideaId = String(idea.id);
-        button.className = className;
+        button.className = `button ${className}`;
         button.textContent = label;
         actions.append(button);
       }
@@ -155,7 +155,10 @@
   function connect() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     socket = new WebSocket(`${protocol}//${window.location.host}`);
-    socket.addEventListener('open', () => { connection.textContent = 'Live updates connected.'; });
+    socket.addEventListener('open', () => {
+      connection.dataset.status = 'connected';
+      connection.lastChild.textContent = ' Live updates connected.';
+    });
     socket.addEventListener('message', (event) => {
       let message;
       try { message = JSON.parse(event.data); } catch { return; }
@@ -167,7 +170,8 @@
       }
     });
     socket.addEventListener('close', () => {
-      connection.textContent = 'Live updates disconnected. Reconnecting…';
+      connection.dataset.status = 'disconnected';
+      connection.lastChild.textContent = ' Live updates disconnected. Reconnecting…';
       window.setTimeout(connect, 1500);
     });
   }

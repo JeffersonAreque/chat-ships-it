@@ -18,8 +18,8 @@ A Twitch stream mini-game where viewers suggest changes and the streamer chooses
 
 ## Pages
 
-- `/game` — blank neon starfield canvas and OBS browser source. Use `/game?autopilot=1` for feature scenes; Codex is instructed to support the exposed autopilot flag when appropriate.
-- `/overlay` — transparent **Ideas / Live Code / Timeline** panels for OBS. Build start selects Live Code automatically; Timeline steps through the blank baseline and shipped builds after the latest reset.
+- `/game` — blank neon starfield canvas. Use `/game?obs=1` as a full-frame 1280×720 OBS source; add `&autopilot=1` for feature scenes that should run without keyboard input.
+- `/overlay` — transparent 1280×720 **Ideas / Live Code / Timeline** panels for OBS. Build start selects Live Code automatically; Timeline steps through the blank baseline and shipped builds after the latest reset.
 - `/admin` — password-protected streamer controls, build queue, errors, undo, and demo reset.
 - `/dev` — local fake-chat tester, available when `CHAT_MODE=dev`.
 
@@ -75,6 +75,11 @@ All settings are listed in `.env.example`:
 - `game/replay.html` and `game/replay.js` display a selected, server-validated Git snapshot inside the overlay replay panel.
 - `credits/` stores viewer credits outside the game code; runtime data is kept under ignored `runtime/`.
 - `overlay/` and `admin/` contain the OBS overlay and streamer panel.
+- `public/brand.css` shares the dark navy and neon design tokens across the three screens. Space Grotesk and Space Mono are self-hosted under `public/fonts/`; each font folder includes its SIL Open Font License.
+
+## Visual design assets
+
+The interface uses bundled local font files, so pages do not request fonts from a CDN. Space Grotesk is used for display and interface text; Space Mono is used for code, status labels, and numbers. Their license texts are included beside the font files in `public/fonts/`.
 
 ## License
 

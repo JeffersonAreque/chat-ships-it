@@ -324,11 +324,13 @@ function createCodexRunner({
 
   let activeRun = null;
   let resetting = false;
+  let buildStartedAt = null;
   const usedFeatureTitles = new Set(knownFeatureTitles.map((title) => normalizeFeatureTitle(title)?.toLocaleLowerCase()).filter(Boolean));
   let undoStack = [];
   try { undoStack = readBuildCommitStack(root); } catch { undoStack = []; }
 
   function emitStatus(status, item = null, message, errorDetails = null) {
+    if (status === 'building') buildStartedAt = Date.now();
     const author = item ? `@${sanitizeAuthor(item.author)}'s idea` : 'the game';
     const idea = item ? String(item.text || 'game update') : '';
     const messages = {
@@ -345,7 +347,7 @@ function createCodexRunner({
         status,
         message: message || messages[status] || status,
         errorDetails: status === 'failed' ? errorDetails : null,
-        startedAt: item?.createdAt ? Date.parse(item.createdAt) : Date.now(),
+        startedAt: item ? (buildStartedAt || Date.now()) : Date.now(),
         item: item ? {
           id: item.id,
           ideaId: item.ideaId,

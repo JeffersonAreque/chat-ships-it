@@ -5,67 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#07111f">
     <title>Chat Ships It — Twitch Builds a Game</title>
-    <style>
-      :root {
-        color-scheme: dark;
-        font-family: system-ui, sans-serif;
-        background: #07111f;
-        color: #eff6ff;
-      }
-
-      * { box-sizing: border-box; }
-
-      body {
-        min-height: 100vh;
-        margin: 0;
-        display: grid;
-        place-items: center;
-        padding: 24px;
-      }
-
-      main { position: relative; width: min(100%, 960px); }
-
-      .topline {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 12px;
-        gap: 16px;
-      }
-
-      h1 { margin: 0; font-size: clamp(1.2rem, 3vw, 1.8rem); }
-      .score { color: #7dd3fc; font-variant-numeric: tabular-nums; }
-
-      canvas {
-        display: block;
-        width: 100%;
-        aspect-ratio: 16 / 9;
-        border: 1px solid #24384e;
-        border-radius: 12px;
-        background: #081827;
-        box-shadow: 0 18px 60px #0008;
-      }
-
-      p { color: #a9bbcf; line-height: 1.5; }
-      .help { margin: 12px 0 0; text-align: center; }
-      kbd { color: #eff6ff; }
-      #viewer-credits { margin: 12px 0 0; color: #bae6fd; font-size: .85rem; text-align: center; }
-      #viewer-credits ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; margin: 5px 0 0; padding: 0; list-style: none; }
-      .build-banner { margin: 0 0 12px; padding: 10px 14px; border: 1px solid #38bdf8aa; border-radius: 10px; color: #e0f2fe; background: #082f49ee; box-shadow: 0 8px 24px #0007; font-weight: 650; text-align: center; }
-    </style>
+    <link rel="stylesheet" href="/assets/brand.css">
+    <link rel="stylesheet" href="/game/game.css">
+    <script>if (new URLSearchParams(location.search).get('obs') === '1') document.documentElement.classList.add('obs-mode');</script>
   </head>
   <body>
-    <main>
-      <div id="build-banner" class="build-banner" role="status" aria-live="polite" hidden></div>
-      <div class="topline">
-        <h1>✨ Twitch Builds a Game from Zero</h1>
-        <div class="score" aria-live="polite">Score: <span id="score">0</span></div>
+    <main class="game-shell">
+      <header class="game-header">
+        <a class="wordmark" href="/game" aria-label="Chat Ships It home"><span class="wordmark-icon">CS</span> CHAT SHIPS IT</a>
+        <div class="game-heading"><p class="eyebrow">TWITCH × CODEX LIVE</p><h1>Chat builds a game from zero</h1></div>
+        <div class="score-chip" aria-live="polite"><span>SCORE</span><strong id="score">0</strong></div>
+      </header>
+      <div id="build-banner" class="build-status" role="status" aria-live="polite" hidden>
+        <span id="build-clock">LIVE BUILD 0:00</span>
+        <ol class="stage-dots" aria-label="Build stages">
+          <li id="stage-queued" class="stage-dot" aria-label="Queued"></li>
+          <li id="stage-building" class="stage-dot" aria-label="Building"></li>
+          <li id="stage-validating" class="stage-dot" aria-label="Validating"></li>
+          <li id="stage-shipped" class="stage-dot" aria-label="Shipped"></li>
+        </ol>
       </div>
-      <canvas id="game" width="960" height="540" aria-label="A blank game canvas with an animated neon starfield"></canvas>
-      <p class="help">The canvas starts blank. Chat ideas add the game, one approved feature at a time.</p>
-      <section id="viewer-credits" aria-label="Viewer credits" hidden>
-        <strong>Chat crew</strong>
-        <ul id="credit-list"></ul>
+      <canvas id="game" width="1280" height="720" aria-label="A game built live by Twitch chat"></canvas>
+      <p class="game-help">Ideas in chat → votes → streamer approval → shipped to the game</p>
+      <section id="viewer-credits" class="credit-ticker" aria-label="Viewer credits" hidden>
+        <span class="ticker-label">Built by chat:</span>
+        <div class="ticker-window"><div id="credits-track" class="ticker-track"><ul id="credit-list"></ul></div></div>
       </section>
     </main>
     <script src="/game/game.js" defer></script>

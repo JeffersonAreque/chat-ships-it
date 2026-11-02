@@ -20,6 +20,7 @@ const gameDirectory = path.join(__dirname, 'game');
 const chatDirectory = path.join(__dirname, 'chat');
 const overlayDirectory = path.join(__dirname, 'overlay');
 const adminDirectory = path.join(__dirname, 'admin');
+const publicDirectory = path.join(__dirname, 'public');
 const chatMode = String(process.env.CHAT_MODE || 'dev').trim().toLowerCase();
 const codexMode = String(process.env.CODEX_MODE || 'mock').trim().toLowerCase();
 const bannedWords = String(process.env.BANNED_WORDS || '').split(',').map((word) => word.trim()).filter(Boolean);
@@ -152,6 +153,7 @@ function handleChatMessage(message) {
 chatAdapter.start(handleChatMessage);
 
 app.use(express.json({ limit: '16kb' }));
+app.use('/assets', express.static(publicDirectory, { index: false, maxAge: '1d' }));
 app.use('/admin', requireAdmin);
 
 app.get('/', (request, response) => {

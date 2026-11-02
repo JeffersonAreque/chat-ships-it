@@ -2,10 +2,15 @@
   const list = document.querySelector('#ideas');
   const empty = document.querySelector('#empty');
   const approved = document.querySelector('#approved');
+  const viewerName = document.querySelector('#viewer-name');
+  const viewerIdea = document.querySelector('#viewer-idea');
+  const ideaCount = document.querySelector('#idea-count');
   const tabs = [...document.querySelectorAll('[role="tab"]')];
   const panels = tabs.map((tab) => document.querySelector(`#${tab.getAttribute('aria-controls')}`));
   const codeLabel = document.querySelector('#code-label');
   const code = document.querySelector('#live-code');
+  const diffLines = document.querySelector('#diff-lines');
+  const codeMode = document.querySelector('#code-mode');
   const timelineList = document.querySelector('#timeline');
   const timelineEmpty = document.querySelector('#timeline-empty');
   const replayFrame = document.querySelector('#replay-frame');
@@ -28,7 +33,9 @@
     const ideas = Array.isArray(state?.topIdeas) ? state.topIdeas : [];
     const approval = state?.latestApproval;
     approved.hidden = !approval;
-    approved.textContent = approval ? `Approved: ${approval.text} by @${approval.author}` : '';
+    viewerName.textContent = approval ? `@${approval.author}` : '';
+    viewerIdea.textContent = approval ? approval.text : '';
+    ideaCount.textContent = `${ideas.length} ${ideas.length === 1 ? 'IDEA' : 'IDEAS'}`;
     list.replaceChildren();
     empty.hidden = ideas.length > 0;
 
@@ -54,7 +61,7 @@
       list.append(item);
     }
     window.ChatShipsBuildNotice?.render(state);
-    if (state?.buildNotice?.status === 'building') activateTab(1);
+    if (['building', 'retrying'].includes(state?.buildNotice?.status)) activateTab(1);
   }
 
   function renderDiff(event) {
@@ -62,7 +69,17 @@
     codeLabel.textContent = item
       ? `Codex’s draft for @${item.author}: ${item.text}`
       : 'Waiting for Codex to start writing…';
-    code.textContent = event?.diff || 'Codex has not changed game.js yet.';
+    codeMode.textContent = item ? 'WRITING' : 'READY';
+    const diff = String(event?.diff || 'Codex has not changed game.js yet.');
+    diffLines.replaceChildren();
+    for (const [index, line] of diff.split('\n').entries()) {
+      if (index > 0) diffLines.append(document.createTextNode('\n'));
+      const lineNode = document.createElement('span');
+      lineNode.textContent = line;
+      if (line.startsWith('+') && !line.startsWith('+++')) lineNode.className = 'diff-add';
+      if (line.startsWith('-') && !line.startsWith('---')) lineNode.className = 'diff-remove';
+      diffLines.append(lineNode);
+    }
     code.scrollTop = code.scrollHeight;
   }
 
@@ -74,17 +91,24 @@
       const step = timelineSteps[index];
       const item = document.createElement('li');
       const button = document.createElement('button');
+      const thumbnail = document.createElement('span');
+      const details = document.createElement('span');
       const title = document.createElement('span');
       const meta = document.createElement('span');
       button.type = 'button';
       button.className = 'timeline-step';
       button.setAttribute('aria-current', selectedStep === index ? 'step' : 'false');
+      thumbnail.className = 'timeline-thumb';
+      thumbnail.setAttribute('aria-hidden', 'true');
+      thumbnail.textContent = String(index + 1).padStart(2, '0');
+      details.className = 'step-details';
       title.className = 'step-title';
-      title.textContent = step.title;
+      title.textContent = step.baseline ? 'Blank starter' : step.title;
       meta.className = 'step-meta';
-      const when = step.date ? new Date(step.date).toLocaleString() : '';
-      meta.textContent = `${step.baseline ? 'Starting screen' : `by @${step.author}`} · ${when}`;
-      button.append(title, meta);
+      const when = step.date ? new Date(step.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+      meta.textContent = `${step.baseline ? 'Starting screen' : `@${step.author}`} · ${when}`;
+      details.append(title, meta);
+      button.append(thumbnail, details);
       button.addEventListener('click', () => selectReplayStep(index));
       item.append(button);
       timelineList.append(item);
@@ -96,10 +120,6 @@
       const nextUrl = `/game/replay.html?commit=${encodeURIComponent(selected.commit)}`;
       if (replayFrame.getAttribute('src') !== nextUrl) replayFrame.setAttribute('src', nextUrl);
     }
-    document.querySelectorAll('.timeline-step').forEach((button) => {
-      const index = [...timelineList.children].indexOf(button.parentElement);
-      button.setAttribute('aria-current', selectedStep === index ? 'step' : 'false');
-    });
   }
 
   function selectReplayStep(index) {

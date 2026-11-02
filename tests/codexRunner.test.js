@@ -230,6 +230,31 @@ test('streams changed workspace code as a live diff while Codex is building', as
   assert.equal(queue.getItems()[0].status, 'done');
 });
 
+test('starts the live build timer when the builder claims an old idea', async (t) => {
+  const root = await makeProject(t);
+  let claimed = false;
+  const statuses = [];
+  const queue = {
+    claimNext() {
+      if (claimed) return null;
+      claimed = true;
+      return { id: 1, ideaId: 1, text: 'make the cat asteroids', author: 'Ana', createdAt: '2000-01-01T00:00:00.000Z' };
+    },
+    updateStatus() {},
+  };
+  const runner = createCodexRunner({
+    buildQueue: queue,
+    mode: 'mock',
+    projectRoot: root,
+    baselineCommit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(),
+    onStatus: (event) => statuses.push(event),
+  });
+
+  await runner.processQueue();
+
+  assert.ok(statuses.find((event) => event.status === 'building').startedAt > Date.parse('2000-01-01T00:00:00.000Z'));
+});
+
 test('resetDemo restores the configured starter game commit and disables undo', async (t) => {
   const root = await makeProject(t);
   const starterCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
