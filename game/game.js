@@ -325,9 +325,28 @@
   // CHAT_SHIPS_ENGINE_END
 
   // CHAT_SHIPS_FEATURE_START
+  const ship = { x: width / 2, y: height / 2, radius: 18, speed: 250, born: false };
   const feature = {
-    update() {},
-    draw() {},
+    update(delta, elapsed, Engine) {
+      if (!ship.born) {
+        ship.born = true;
+        Engine.effects.spawn(ship.x, ship.y, Engine.palette.cyan);
+      }
+
+      let dx = Number(Engine.input.isDown('ArrowRight')) - Number(Engine.input.isDown('ArrowLeft'));
+      let dy = Number(Engine.input.isDown('ArrowDown')) - Number(Engine.input.isDown('ArrowUp'));
+      if (Engine.input.isAutopilot) {
+        dx = Math.cos(elapsed * 0.75);
+        dy = Math.sin(elapsed * 1.1) * 0.7;
+      }
+      const magnitude = Math.hypot(dx, dy) || 1;
+      ship.x = Math.max(ship.radius + 4, Math.min(width - ship.radius - 4, ship.x + (dx / magnitude) * ship.speed * delta));
+      ship.y = Math.max(ship.radius + 4, Math.min(height - ship.radius - 4, ship.y + (dy / magnitude) * ship.speed * delta));
+    },
+    draw(Engine) {
+      Engine.sprites.ship(ship.x, ship.y, ship.radius, Engine.palette.cyan);
+      Engine.draw.text('ARROW KEYS TO FLY', width / 2, height - 20, Engine.palette.white, 13);
+    },
   };
   Engine.start(feature);
   // CHAT_SHIPS_FEATURE_END
