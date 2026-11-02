@@ -65,6 +65,8 @@ test('admin uses shared brand styling with card sections and clear action roles'
   const css = read('admin/admin.css');
   assert.match(html, /id="ideas-card"/);
   assert.match(html, /id="build-card"/);
+  assert.match(html, /id="replay-card"/);
+  for (const id of ['replay-play', 'replay-prev', 'replay-next', 'replay-stop']) assert.match(html, new RegExp(`id="${id}"`));
   assert.match(css, /\.dashboard-card/);
   assert.match(css, /button\.approve/);
   assert.match(css, /button\.reject/);

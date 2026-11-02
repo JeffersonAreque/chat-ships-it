@@ -17,30 +17,20 @@
   const timelineSteps = [];
   let selectedStep = -1;
   let latestTimelineCommit = null;
-  let lastBroadcastCommit = null;
   let socket;
   let activePanelIndex = 0;
+  let activeReplayCommit = null;
   let shippedNoticeKey = null;
   let postShipIdeaIds = new Set();
   let postShipRound = null;
 
   function activateTab(index) {
-    if (activePanelIndex === 2 && index !== 2 && socket?.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ type: 'replay-live' }));
-      lastBroadcastCommit = null;
-    }
     activePanelIndex = index;
     tabs.forEach((tab, tabIndex) => {
       tab.setAttribute('aria-selected', String(index === tabIndex));
       panels[tabIndex].hidden = index !== tabIndex;
     });
     if (index === 2) renderReplay();
-  }
-
-  function sendReplaySelection(commit) {
-    if (!commit || commit === lastBroadcastCommit || socket?.readyState !== WebSocket.OPEN) return;
-    socket.send(JSON.stringify({ type: 'replay-select', commit }));
-    lastBroadcastCommit = commit;
   }
 
   function renderIdeas(state) {
@@ -118,12 +108,11 @@
     for (let index = 0; index < timelineSteps.length; index += 1) {
       const step = timelineSteps[index];
       const item = document.createElement('li');
-      const button = document.createElement('button');
+      const button = document.createElement('div');
       const thumbnail = document.createElement('span');
       const details = document.createElement('span');
       const title = document.createElement('span');
       const meta = document.createElement('span');
-      button.type = 'button';
       button.className = 'timeline-step';
       button.setAttribute('aria-current', selectedStep === index ? 'step' : 'false');
       thumbnail.className = 'timeline-thumb';
@@ -137,27 +126,11 @@
       meta.textContent = `${step.baseline ? 'Starting screen' : `@${step.author}`} · ${when}`;
       details.append(title, meta);
       button.append(thumbnail, details);
-      button.addEventListener('click', () => selectReplayStep(index));
       item.append(button);
       timelineList.append(item);
     }
     replayPosition.textContent = hasSteps ? `${selectedStep + 1} / ${timelineSteps.length}` : '0 / 0';
-    if (!panels[2].hidden && hasSteps && selectedStep >= 0) {
-      const selected = timelineSteps[selectedStep];
-      sendReplaySelection(selected.commit);
-    } else if (!hasSteps) {
-      lastBroadcastCommit = null;
-    }
   }
-
-  function selectReplayStep(index) {
-    if (index < 0 || index >= timelineSteps.length) return;
-    selectedStep = index;
-    renderReplay();
-  }
-
-  document.querySelector('#replay-prev').addEventListener('click', () => selectReplayStep(selectedStep - 1));
-  document.querySelector('#replay-next').addEventListener('click', () => selectReplayStep(selectedStep + 1));
 
   function renderTimeline(timeline) {
     const nextSteps = Array.isArray(timeline?.steps) ? timeline.steps : [];
@@ -165,9 +138,7 @@
     const latestChanged = nextLatestCommit !== latestTimelineCommit;
     timelineSteps.splice(0, timelineSteps.length, ...nextSteps);
     if (!timelineSteps.length) selectedStep = -1;
-    else if (latestChanged) selectedStep = timelineSteps.length - 1;
-    else if (selectedStep < 0) selectedStep = timelineSteps.length - 1;
-    else selectedStep = Math.min(selectedStep, timelineSteps.length - 1);
+    else if (latestChanged || activeReplayCommit) selectedStep = timelineSteps.findIndex((step) => step.commit === activeReplayCommit);
     latestTimelineCommit = nextLatestCommit;
     renderReplay();
   }
@@ -181,6 +152,16 @@
       if (message.type === 'state') renderIdeas(message.state);
       if (message.type === 'build-diff') renderDiff(message);
       if (message.type === 'timeline') renderTimeline(message.timeline);
+      if (message.type === 'replay-step') {
+        activeReplayCommit = message.step?.commit || null;
+        selectedStep = timelineSteps.findIndex((step) => step.commit === activeReplayCommit);
+        renderReplay();
+      }
+      if (message.type === 'replay-live') {
+        activeReplayCommit = null;
+        selectedStep = -1;
+        renderReplay();
+      }
     });
     socket.addEventListener('close', () => window.setTimeout(connect, 1500));
   }

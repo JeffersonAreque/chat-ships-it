@@ -23,9 +23,9 @@
     socket.addEventListener('message', (event) => {
       let next;
       try { next = JSON.parse(event.data); } catch { return; }
-      if (next.type === 'replay-select' && /^[a-f0-9]{7,40}$/i.test(next.commit || '') && next.commit !== commit) {
+      if (next.type === 'replay-step' && /^[a-f0-9]{7,40}$/i.test(next.step?.commit || '') && next.step.commit !== new URLSearchParams(window.location.search).get('commit')) {
         const obs = query.get('obs') === '1' ? '&obs=1' : '';
-        window.location.href = `/game/replay.html?commit=${encodeURIComponent(next.commit)}${obs}&autopilot=1`;
+        window.location.href = `/game/replay.html?commit=${encodeURIComponent(next.step.commit)}${obs}&autopilot=1`;
       }
       if (next.type === 'replay-live') window.location.href = query.get('obs') === '1' ? '/game?obs=1' : '/game';
     });

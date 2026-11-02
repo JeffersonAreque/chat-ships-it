@@ -25,6 +25,9 @@ h3 { margin: 0; font-size: 14px; }
 .dashboard-card { min-width: 0; padding: 22px; border: 1px solid var(--border); border-radius: 17px; background: linear-gradient(150deg, #0d1d31ed, #091525ed); box-shadow: 0 18px 50px #0004, inset 0 1px #ffffff08; }
 .ideas-card { min-height: 260px; }
 .build-card { border-color: #f472d033; }
+.replay-card { margin-top: 16px; }
+.replay-status { min-height: 22px; margin: 15px 0 12px; color: #c6d9e8; font: 400 12px var(--mono-font); }
+.replay-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .card-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-bottom: 17px; border-bottom: 1px solid #8bb8d322; }
 .card-icon { display: grid; width: 37px; height: 37px; place-items: center; border: 1px solid #67e8f955; border-radius: 11px; color: var(--cyan); background: #0b293b; font: 400 11px var(--mono-font); }
 .card-icon.magenta { border-color: #f472d066; color: var(--magenta); background: #321735; }

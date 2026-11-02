@@ -12,8 +12,46 @@
   const confirmResetButton = document.querySelector('#confirm-reset');
   const buildStatus = document.querySelector('#build-status');
   const buildError = document.querySelector('#build-error');
+  const replayStatus = document.querySelector('#replay-status');
+  const replayPlayButton = document.querySelector('#replay-play');
+  const replayPreviousButton = document.querySelector('#replay-prev');
+  const replayNextButton = document.querySelector('#replay-next');
+  const replayStopButton = document.querySelector('#replay-stop');
   let socket;
   let resetConfirmationTimer;
+
+  let replayCommandQueue = Promise.resolve();
+
+  function sendReplayMessage(message) {
+    replayCommandQueue = replayCommandQueue.then(async () => {
+      const response = await fetch('/admin/api/replay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(message),
+      });
+      requireAdminAuthentication(response);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Replay control could not be sent.');
+    }).catch((error) => { actionStatus.textContent = error.message; });
+    return replayCommandQueue;
+  }
+
+  const replayController = window.createReplayController({
+    sendStep: (step) => sendReplayMessage({ type: 'replay-step', commit: step.commit }),
+    sendLive: () => sendReplayMessage({ type: 'replay-live' }),
+    onChange: (state) => {
+      const label = state.step?.baseline ? 'Blank starter' : (state.step?.title || 'Live game');
+      replayStatus.textContent = state.playing
+        ? `Playing step ${state.index + 1} of ${state.steps.length}: ${label}`
+        : state.step
+          ? `Step ${state.index + 1} of ${state.steps.length}: ${label}`
+          : (state.steps.length ? 'Live game. Choose Play, Previous, or Next.' : 'No replay steps are available yet.');
+      replayPlayButton.disabled = state.steps.length === 0;
+      replayPreviousButton.disabled = state.steps.length === 0;
+      replayNextButton.disabled = state.steps.length === 0;
+      replayStopButton.disabled = !state.step && !state.playing;
+    },
+  });
 
   function clearResetConfirmation() {
     if (resetConfirmationTimer) window.clearTimeout(resetConfirmationTimer);
@@ -178,6 +216,11 @@
     }
   });
 
+  replayPlayButton.addEventListener('click', () => replayController.play());
+  replayPreviousButton.addEventListener('click', () => replayController.previous());
+  replayNextButton.addEventListener('click', () => replayController.next());
+  replayStopButton.addEventListener('click', () => replayController.stop());
+
   function connect() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     socket = new WebSocket(`${protocol}//${window.location.host}`);
@@ -194,6 +237,9 @@
           loadState().catch((error) => { actionStatus.textContent = error.message; });
         }
       }
+      if (message.type === 'timeline') replayController.setSteps(message.timeline?.steps || []);
+      if (message.type === 'replay-step') replayController.receiveStep(message.step?.commit);
+      if (message.type === 'replay-live') replayController.receiveLive();
     });
     socket.addEventListener('close', () => {
       connection.dataset.status = 'disconnected';

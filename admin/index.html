@@ -48,8 +48,22 @@
           <ol id="queue" class="item-list queue-list"></ol>
         </section>
       </div>
+      <section id="replay-card" class="dashboard-card replay-card" aria-labelledby="replay-title">
+        <div class="card-heading">
+          <div><p class="eyebrow">DEMO PLAYBACK</p><h2 id="replay-title">Replay timeline</h2></div>
+          <span class="card-icon">03</span>
+        </div>
+        <p id="replay-status" class="replay-status" role="status" aria-live="polite">Load the shipped timeline to replay the demo.</p>
+        <div class="replay-actions" aria-label="Replay controls">
+          <button id="replay-play" class="button" type="button" disabled>Play</button>
+          <button id="replay-prev" class="button secondary" type="button" disabled>Previous</button>
+          <button id="replay-next" class="button secondary" type="button" disabled>Next</button>
+          <button id="replay-stop" class="button reset-neutral" type="button" disabled>Stop</button>
+        </div>
+      </section>
       <footer class="admin-footer"><span>Ideas need your approval before Codex builds.</span><a href="/overlay">Open broadcast overlay ↗</a></footer>
     </main>
+    <script src="/admin/replayController.js" defer></script>
     <script src="/admin/admin.js" defer></script>
   </body>
 </html>

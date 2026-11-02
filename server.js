@@ -33,6 +33,7 @@ const creditStore = createCreditStore({
 const adminPassword = String(process.env.ADMIN_PASSWORD || '').trim();
 let latestBuildNotice = null;
 let latestBuildDiff = null;
+let activeReplayStep = null;
 let buildRunner;
 
 if (!['dev', 'twitch'].includes(chatMode)) {
@@ -77,6 +78,21 @@ function broadcastTimeline() {
   for (const socket of websocketServer.clients) sendJson(socket, message);
 }
 
+function broadcastReplayStep(commit) {
+  const timeline = getReplayTimeline();
+  const index = timeline.steps.findIndex((step) => step.commit === commit);
+  if (index < 0) throw new Error('That replay step is not part of the current demo timeline.');
+  readReplaySource(__dirname, commit);
+  const step = { ...timeline.steps[index], index, total: timeline.steps.length };
+  activeReplayStep = step;
+  for (const socket of websocketServer.clients) sendJson(socket, { type: 'replay-step', step });
+}
+
+function broadcastReplayLive() {
+  activeReplayStep = null;
+  for (const socket of websocketServer.clients) sendJson(socket, { type: 'replay-live' });
+}
+
 function getAppState({ includeBuildErrorDetails = false } = {}) {
   const buildNotice = latestBuildNotice ? { ...latestBuildNotice } : null;
   if (buildNotice && !includeBuildErrorDetails) delete buildNotice.errorDetails;
@@ -103,6 +119,7 @@ buildRunner = createCodexRunner({
     }
     broadcastState();
     if (event.status === 'done' || event.status === 'undone') {
+      broadcastReplayLive();
       broadcastGameReload();
       broadcastTimeline();
     }
@@ -205,6 +222,24 @@ app.get('/admin/api/state', (request, response) => {
   response.set('Cache-Control', 'no-store');
   response.json({ state: getAppState({ includeBuildErrorDetails: true }) });
 });
+app.post('/admin/api/replay', (request, response) => {
+  const type = request.body?.type;
+  if (type === 'replay-live') {
+    broadcastReplayLive();
+    response.json({ ok: true });
+    return;
+  }
+  if (type !== 'replay-step') {
+    response.status(400).json({ error: 'Replay action must be replay-step or replay-live.' });
+    return;
+  }
+  try {
+    broadcastReplayStep(String(request.body?.commit || ''));
+    response.json({ ok: true });
+  } catch (error) {
+    response.status(400).json({ error: error.message });
+  }
+});
 app.post('/admin/api/approve', (request, response) => {
   if (buildRunner.isResetting()) {
     response.status(409).json({ error: 'The demo is being reset. Try again in a moment.' });
@@ -270,6 +305,7 @@ app.post('/admin/api/reset-demo', async (request, response) => {
   latestBuildDiff = null;
   broadcastBuildDiff({ item: null, diff: '', updatedAt: Date.now() });
   broadcastState();
+  broadcastReplayLive();
   broadcastGameReload();
   broadcastTimeline();
   response.json({ state: getAppState() });
@@ -280,6 +316,7 @@ websocketServer.on('connection', (socket) => {
   sendJson(socket, { type: 'state', state: getAppState() });
   if (latestBuildDiff) sendJson(socket, { type: 'build-diff', ...latestBuildDiff });
   sendJson(socket, { type: 'timeline', timeline: getReplayTimeline() });
+  if (activeReplayStep) sendJson(socket, { type: 'replay-step', step: activeReplayStep });
 
   socket.on('message', (data) => {
     let message;
@@ -287,21 +324,6 @@ websocketServer.on('connection', (socket) => {
       message = JSON.parse(data.toString());
     } catch {
       sendJson(socket, { type: 'error', message: 'Send a valid JSON message.' });
-      return;
-    }
-
-    if (message.type === 'replay-select') {
-      try {
-        readReplaySource(__dirname, String(message.commit || ''));
-        for (const client of websocketServer.clients) sendJson(client, { type: 'replay-select', commit: String(message.commit) });
-      } catch (error) {
-        sendJson(socket, { type: 'error', message: error.message });
-      }
-      return;
-    }
-
-    if (message.type === 'replay-live') {
-      for (const client of websocketServer.clients) sendJson(client, { type: 'replay-live' });
       return;
     }
 

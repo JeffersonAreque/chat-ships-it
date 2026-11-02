@@ -9,8 +9,8 @@
       const query = new URLSearchParams(window.location.search);
       const obs = query.get('obs') === '1';
       if (message.type === 'game-reload') window.location.reload();
-      if (message.type === 'replay-select' && /^[a-f0-9]{7,40}$/i.test(message.commit || '')) {
-        window.location.href = `/game/replay.html?commit=${encodeURIComponent(message.commit)}${obs ? '&obs=1' : ''}&autopilot=1`;
+      if (message.type === 'replay-step' && /^[a-f0-9]{7,40}$/i.test(message.step?.commit || '')) {
+        window.location.href = `/game/replay.html?commit=${encodeURIComponent(message.step.commit)}${obs ? '&obs=1' : ''}&autopilot=1`;
       }
       if (message.type === 'replay-live') window.location.href = obs ? '/game?obs=1' : '/game';
     });
